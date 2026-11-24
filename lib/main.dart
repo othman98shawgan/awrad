@@ -73,19 +73,13 @@ class _AwradShellState extends ConsumerState<AwradShell> {
   @override
   Widget build(BuildContext context) {
     final colors = context.awradColors;
-    final showCalendarAction = _currentIndex == 0 || _currentIndex == 1;
+    final showTodayAction = _currentIndex == 0 || _currentIndex == 1;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_currentIndex]),
         actions: [
-          if (showCalendarAction)
-            IconButton(
-              tooltip: 'Pick date',
-              icon: const Icon(Icons.calendar_month_rounded),
-              onPressed: () =>
-                  DateSwitcherBar.openCalendarPicker(context, ref),
-            ),
+          if (showTodayAction) const TodayCalendarButton(),
           if (_currentIndex == 0)
             Padding(
               padding: const EdgeInsets.only(right: 8),
