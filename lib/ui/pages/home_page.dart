@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../models/awrad_status.dart';
+import '../../services/awrad_provider.dart';
+import '../../services/date_utils.dart';
 import '../../services/selected_date_provider.dart';
-import '../../services/task_provider.dart';
 
 class HomePage extends ConsumerStatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
 
   static const int initialPage = 10000;
 
@@ -18,13 +21,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void initState() {
     super.initState();
-
-    final today = DateTime.now();
-    final initialDate = today;
-
-    _controller = PageController(
-      initialPage: HomePage.initialPage,
-    );
+    _controller = PageController(initialPage: HomePage.initialPage);
   }
 
   @override
@@ -33,24 +30,13 @@ class _HomePageState extends ConsumerState<HomePage> {
     super.dispose();
   }
 
-  bool? _nextState(bool? current) {
-    if (current == false) return true;
-    if (current == true) return null;
-    return false;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final today = DateTime.now();
+    final today = normalizeDate(DateTime.now());
     final date = ref.watch(selectedDateProvider);
 
-    final offset = date.difference(DateTime(today.year, today.month, today.day)).inDays;
-    final targetPage = HomePage.initialPage + offset;
-
-    // 🚨 Correct place to listen
-    ref.listen<DateTime>(selectedDateProvider, (previous, next) {
-      final today = DateTime.now();
-      final offset = next.difference(DateTime(today.year, today.month, today.day)).inDays;
+    ref.listen<DateTime>(selectedDateProvider, (_, next) {
+      final offset = normalizeDate(next).difference(today).inDays;
       final targetPage = HomePage.initialPage + offset;
 
       if (_controller.hasClients && _controller.page?.round() != targetPage) {
@@ -74,7 +60,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               },
             ),
             Text(
-              "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}",
+              formatDateKey(date),
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             IconButton(
@@ -94,16 +80,24 @@ class _HomePageState extends ConsumerState<HomePage> {
         physics: const ClampingScrollPhysics(),
         onPageChanged: (pageIndex) {
           final offset = pageIndex - HomePage.initialPage;
-          final newDate = DateTime(today.year, today.month, today.day).add(Duration(days: offset));
-          ref.read(selectedDateProvider.notifier).state = newDate;
+          final newDate = DateTime(today.year, today.month, today.day + offset);
+          ref.read(selectedDateProvider.notifier).selectDate(newDate);
         },
         itemBuilder: (context, pageIndex) {
           final offset = pageIndex - HomePage.initialPage;
-          final pageDate = DateTime(today.year, today.month, today.day).add(Duration(days: offset));
+          final pageDate = DateTime(today.year, today.month, today.day + offset);
 
-          final tasks = ref.watch(tasksProvider(pageDate));
-          final completed = tasks.where((t) => t['done'] == true).length;
-          final taskNotifier = ref.read(tasksProvider(pageDate).notifier);
+          final allTasks = ref.watch(awradTasksProvider);
+          final tasks = allTasks.where((t) => t.appliesTo(pageDate)).toList();
+          final log = ref.watch(dailyAwradLogProvider(pageDate));
+          final logNotifier = ref.read(dailyAwradLogProvider(pageDate).notifier);
+
+          final completed = tasks
+              .where((t) => log.statusFor(t.id) == AwradStatus.done)
+              .length;
+          final halfDone = tasks
+              .where((t) => log.statusFor(t.id) == AwradStatus.halfDone)
+              .length;
 
           return Padding(
             padding: const EdgeInsets.all(16),
@@ -115,24 +109,27 @@ class _HomePageState extends ConsumerState<HomePage> {
                     itemCount: tasks.length,
                     itemBuilder: (context, idx) {
                       final task = tasks[idx];
-                      final done = task['done'] as bool?;
+                      final status = log.statusFor(task.id);
 
                       return CheckboxListTile(
                         tristate: true,
-                        activeColor: Colors.green,
+                        activeColor: status == AwradStatus.halfDone
+                            ? Colors.amber[700]
+                            : Colors.green,
                         title: Text(
-                          task['title'],
+                          task.title,
                           style: TextStyle(
-                            decoration: done == true ? TextDecoration.lineThrough : null,
-                            color: done == true ? Colors.grey : null,
+                            decoration: status == AwradStatus.done
+                                ? TextDecoration.lineThrough
+                                : null,
+                            color: status == AwradStatus.done
+                                ? Colors.grey
+                                : null,
                           ),
                         ),
-                        value: done,
+                        value: status.toTristate(),
                         onChanged: (_) {
-                          if (taskNotifier.mounted) {
-                            final next = _nextState(done);
-                            taskNotifier.toggleTask(idx, next);
-                          }
+                          logNotifier.cycleTaskStatus(task.id);
                         },
                       );
                     },
@@ -140,7 +137,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  "$completed of ${tasks.length} tasks completed",
+                  halfDone > 0
+                      ? '$completed of ${tasks.length} tasks completed ($halfDone half done)'
+                      : '$completed of ${tasks.length} tasks completed',
                   style: TextStyle(color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 24),
