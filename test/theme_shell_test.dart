@@ -14,15 +14,20 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: OradApp()));
     await tester.pumpAndSettle();
 
+    final navBar = find.byType(NavigationBar);
     expect(find.byType(AppBar), findsOneWidget);
-    expect(find.byType(NavigationBar), findsOneWidget);
-    expect(find.text('Awrad'), findsWidgets);
-    expect(find.text('Prayer'), findsOneWidget);
-    expect(find.text('Progress'), findsOneWidget);
-    expect(find.text('Settings'), findsOneWidget);
+    expect(navBar, findsOneWidget);
+    expect(find.descendant(of: navBar, matching: find.text('Awrad')),
+        findsOneWidget);
+    expect(find.descendant(of: navBar, matching: find.text('Prayer')),
+        findsOneWidget);
+    expect(find.descendant(of: navBar, matching: find.text('Progress')),
+        findsOneWidget);
+    expect(find.descendant(of: navBar, matching: find.text('Settings')),
+        findsOneWidget);
 
     // Switch to Prayer tab and verify still a single AppBar.
-    await tester.tap(find.text('Prayer'));
+    await tester.tap(find.descendant(of: navBar, matching: find.text('Prayer')));
     await tester.pumpAndSettle();
     expect(find.byType(AppBar), findsOneWidget);
     expect(find.text('Daily Prayers'), findsOneWidget);

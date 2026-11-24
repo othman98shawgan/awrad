@@ -8,6 +8,7 @@ import 'ui/pages/prayer_progress_page.dart';
 import 'ui/pages/progress_page.dart';
 import 'ui/pages/settings_page.dart';
 import 'ui/theme/app_theme.dart';
+import 'ui/widgets/awrad_task_sheet.dart';
 import 'ui/widgets/date_switcher_bar.dart';
 
 void main() {
@@ -85,7 +86,30 @@ class _AwradShellState extends ConsumerState<AwradShell> {
               onPressed: () =>
                   DateSwitcherBar.openCalendarPicker(context, ref),
             ),
-          const SizedBox(width: 4),
+          if (_currentIndex == 0)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  minimumSize: const Size(0, 36),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                onPressed: () => showAwradTaskSheet(context),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text(
+                  'New Wird',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ),
+            )
+          else
+            const SizedBox(width: 4),
         ],
       ),
       body: IndexedStack(
