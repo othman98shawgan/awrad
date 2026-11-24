@@ -108,7 +108,23 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
 
     final rangeQuery = ProgressRangeQuery(start, end);
     final rangeAsync = ref.watch(progressRangeProvider(rangeQuery));
-    final days = rangeAsync.valueOrNull ?? const <DailyProgressSummary>[];
+    final days = rangeAsync.valueOrNull ??
+        datesInRange(start, end)
+            .map(
+              (d) => DailyProgressSummary(
+                date: d,
+                awradTotal: 0,
+                awradDone: 0,
+                awradHalfDone: 0,
+                awradScore: 0,
+                prayersDone: 0,
+                prayersHalfDone: 0,
+                prayersInMasjid: 0,
+                completedRakahs: 0,
+                totalRakahs: 0,
+              ),
+            )
+            .toList();
     final taskBreakdownAsync =
         ref.watch(awradTaskBreakdownProvider(rangeQuery));
     final taskSummaries =
