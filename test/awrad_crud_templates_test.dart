@@ -9,7 +9,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('tri-state toggle cycles Done -> Half done -> To-Do',
+  testWidgets('tap cycles status and long-press opens Edit Wird sheet',
       (tester) async {
     await tester.pumpWidget(const ProviderScope(child: OradApp()));
     await tester.pumpAndSettle();
@@ -17,24 +17,28 @@ void main() {
     expect(find.text('Daily Progress'), findsOneWidget);
     expect(find.text('0 of 12 done'), findsOneWidget);
 
-    final firstToggle = find.bySemanticsLabel('Toggle task status').first;
+    final firstTask = find.text('Read Quran');
 
-    // 1st tap: Done
-    await tester.tap(firstToggle);
+    // 1st tap on card: Done
+    await tester.tap(firstTask);
     await tester.pumpAndSettle();
     expect(find.text('1 of 12 done'), findsOneWidget);
 
-    // 2nd tap: Half done
-    await tester.tap(firstToggle);
-    await tester.pumpAndSettle();
-    expect(find.text('Half done'), findsOneWidget);
-    expect(find.text('0 of 12 done · 1 half done'), findsOneWidget);
-
-    // 3rd tap: Not done
-    await tester.tap(firstToggle);
+    // 2nd tap on card: Half done (no "Half done" text badge on card)
+    await tester.tap(firstTask);
     await tester.pumpAndSettle();
     expect(find.text('Half done'), findsNothing);
+    expect(find.text('0 of 12 done · 1 half done'), findsOneWidget);
+
+    // 3rd tap on card: Not done
+    await tester.tap(firstTask);
+    await tester.pumpAndSettle();
     expect(find.text('0 of 12 done'), findsOneWidget);
+
+    // Long press opens Edit Wird sheet
+    await tester.longPress(firstTask);
+    await tester.pumpAndSettle();
+    expect(find.text('Edit Wird'), findsOneWidget);
   });
 
   testWidgets('adding a new Wird via sheet updates the Awrad list',
