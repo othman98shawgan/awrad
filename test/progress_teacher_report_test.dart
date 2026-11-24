@@ -113,6 +113,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Consistency Heatmap'), findsOneWidget);
 
+    // Step to previous week and return via AppBar 'This week' icon
+    final initialPeriodText =
+        tester.widget<Text>(find.byType(Text).at(3)).data;
+    await tester.tap(find.byTooltip('Previous period'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('This week'));
+    await tester.pumpAndSettle();
+    expect(initialPeriodText, isNotNull);
+
     // Open Progress Report sheet
     await tester.scrollUntilVisible(
       find.text('Report'),

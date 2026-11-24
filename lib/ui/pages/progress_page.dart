@@ -21,7 +21,6 @@ class ProgressPage extends ConsumerStatefulWidget {
 
 class _ProgressPageState extends ConsumerState<ProgressPage> {
   _ProgressPeriod _period = _ProgressPeriod.monthly;
-  late DateTime _anchorDate;
   DateTime? _selectedDay;
 
   static const _monthNames = [
@@ -57,22 +56,20 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
   @override
   void initState() {
     super.initState();
-    final today = normalizeDate(DateTime.now());
-    _anchorDate = today;
-    _selectedDay = today;
+    _selectedDay = normalizeDate(DateTime.now());
   }
 
-  (DateTime, DateTime) _currentRange() {
+  (DateTime, DateTime) _currentRange(DateTime anchorDate) {
     if (_period == _ProgressPeriod.monthly) {
-      final start = DateTime(_anchorDate.year, _anchorDate.month, 1);
-      final end = DateTime(_anchorDate.year, _anchorDate.month + 1, 0);
+      final start = DateTime(anchorDate.year, anchorDate.month, 1);
+      final end = DateTime(anchorDate.year, anchorDate.month + 1, 0);
       return (start, end);
     }
-    // Weekly: Monday..Sunday containing _anchorDate
+    // Weekly: Monday..Sunday containing anchorDate
     final start = DateTime(
-      _anchorDate.year,
-      _anchorDate.month,
-      _anchorDate.day - (_anchorDate.weekday - 1),
+      anchorDate.year,
+      anchorDate.month,
+      anchorDate.day - (anchorDate.weekday - 1),
     );
     final end = DateTime(start.year, start.month, start.day + 6);
     return (start, end);
@@ -87,17 +84,16 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
     return '$startText – $endText';
   }
 
-  void _stepPeriod(int delta) {
+  void _stepPeriod(DateTime anchorDate, int delta) {
+    final next = _period == _ProgressPeriod.monthly
+        ? DateTime(anchorDate.year, anchorDate.month + delta, 1)
+        : DateTime(
+            anchorDate.year,
+            anchorDate.month,
+            anchorDate.day + (delta * 7),
+          );
+    ref.read(progressAnchorDateProvider.notifier).state = next;
     setState(() {
-      if (_period == _ProgressPeriod.monthly) {
-        _anchorDate = DateTime(_anchorDate.year, _anchorDate.month + delta, 1);
-      } else {
-        _anchorDate = DateTime(
-          _anchorDate.year,
-          _anchorDate.month,
-          _anchorDate.day + (delta * 7),
-        );
-      }
       _selectedDay = null;
     });
   }
@@ -106,7 +102,8 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
   Widget build(BuildContext context) {
     final colors = context.awradColors;
     final theme = Theme.of(context);
-    final (start, end) = _currentRange();
+    final anchorDate = ref.watch(progressAnchorDateProvider);
+    final (start, end) = _currentRange(anchorDate);
     final label = _periodLabel(start, end);
 
     final rangeQuery = ProgressRangeQuery(start, end);
@@ -175,7 +172,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
               IconButton(
                 tooltip: 'Previous period',
                 icon: const Icon(Icons.chevron_left_rounded),
-                onPressed: () => _stepPeriod(-1),
+                onPressed: () => _stepPeriod(anchorDate, -1),
               ),
               Expanded(
                 child: Text(
@@ -189,7 +186,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
               IconButton(
                 tooltip: 'Next period',
                 icon: const Icon(Icons.chevron_right_rounded),
-                onPressed: () => _stepPeriod(1),
+                onPressed: () => _stepPeriod(anchorDate, 1),
               ),
             ],
           ),

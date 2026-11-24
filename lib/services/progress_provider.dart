@@ -7,6 +7,11 @@ import 'awrad_provider.dart';
 import 'date_utils.dart';
 import 'prayer_provider.dart';
 
+/// Anchor date for the Progress tab's Weekly/Monthly view.
+final progressAnchorDateProvider = StateProvider<DateTime>(
+  (ref) => normalizeDate(DateTime.now()),
+);
+
 /// Computes the current consecutive-day streak ending at [today] (or yesterday
 /// if [today] has no progress yet) where `awradScore > 0`.
 int computeAwradStreak(

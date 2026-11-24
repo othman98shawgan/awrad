@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import 'services/date_utils.dart';
+import 'services/progress_provider.dart';
 import 'services/settings_provider.dart';
 import 'ui/pages/home_page.dart';
 import 'ui/pages/prayer_progress_page.dart';
@@ -68,6 +70,14 @@ class _AwradShellState extends ConsumerState<AwradShell> {
   Widget build(BuildContext context) {
     final colors = context.awradColors;
     final showTodayAction = _currentIndex == 0 || _currentIndex == 1;
+    final progressAnchor = ref.watch(progressAnchorDateProvider);
+    final today = normalizeDate(DateTime.now());
+    final isCurrentWeek =
+        progressAnchor.year == today.year &&
+        progressAnchor.month == today.month &&
+        (progressAnchor.difference(today).inDays.abs() < 7 &&
+            progressAnchor.weekday - today.weekday ==
+                progressAnchor.difference(today).inDays);
     final pages = [
       const HomePage(),
       const PrayerProgressPage(),
@@ -80,6 +90,13 @@ class _AwradShellState extends ConsumerState<AwradShell> {
         title: Text(_titles[_currentIndex]),
         actions: [
           if (showTodayAction) const TodayCalendarButton(),
+          if (_currentIndex == 2)
+            TodayCalendarButton(
+              tooltip: 'This week',
+              isCurrentOverride: isCurrentWeek,
+              onPressedOverride: () =>
+                  ref.read(progressAnchorDateProvider.notifier).state = today,
+            ),
           if (_currentIndex == 0)
             Padding(
               padding: const EdgeInsets.only(right: 8),

@@ -6,30 +6,40 @@ import '../../services/selected_date_provider.dart';
 import '../theme/app_theme.dart';
 
 /// Custom calendar icon button displaying today's day-of-month number.
-/// Tapping jumps [selectedDateProvider] directly back to today.
+/// Tapping jumps back to today (or the current week/month when [onPressed] is provided).
 class TodayCalendarButton extends ConsumerWidget {
-  const TodayCalendarButton({super.key});
+  final bool? isCurrentOverride;
+  final VoidCallback? onPressedOverride;
+  final String tooltip;
+
+  const TodayCalendarButton({
+    super.key,
+    this.isCurrentOverride,
+    this.onPressedOverride,
+    this.tooltip = 'Go to today',
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedDateProvider);
     final today = normalizeDate(DateTime.now());
-    final isToday = selected == today;
+    final isCurrent = isCurrentOverride ?? (selected == today);
     final colors = context.awradColors;
 
-    final borderColor = isToday ? colors.cardBorder : colors.emerald;
-    final headerColor = isToday ? colors.mutedText : colors.emerald;
-    final bgColor = isToday
+    final borderColor = isCurrent ? colors.cardBorder : colors.emerald;
+    final headerColor = isCurrent ? colors.mutedText : colors.emerald;
+    final bgColor = isCurrent
         ? Theme.of(context).colorScheme.surface
         : colors.emeraldSoft;
     final numberColor =
-        isToday ? Theme.of(context).colorScheme.onSurface : colors.emerald;
+        isCurrent ? Theme.of(context).colorScheme.onSurface : colors.emerald;
 
     return IconButton(
-      tooltip: 'Go to today',
-      onPressed: isToday
+      tooltip: tooltip,
+      onPressed: isCurrent
           ? null
-          : () => ref.read(selectedDateProvider.notifier).goToToday(),
+          : (onPressedOverride ??
+              () => ref.read(selectedDateProvider.notifier).goToToday()),
       icon: Container(
         width: 28,
         height: 28,
