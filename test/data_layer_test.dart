@@ -89,10 +89,15 @@ void main() {
       expect(dhuhr.status, AwradStatus.notDone);
       expect(dhuhr.done, false);
 
-      final partial = dhuhr.copyWith(fardDone: true, inMasjid: true);
+      final partial = dhuhr.copyWith(beforeSunnahDone: true);
       expect(partial.completedRakahs, 4);
       expect(partial.status, AwradStatus.halfDone);
       expect(partial.done, isNull);
+
+      final fardOnly = dhuhr.copyWith(fardDone: true);
+      expect(fardOnly.completedRakahs, 4);
+      expect(fardOnly.status, AwradStatus.done);
+      expect(fardOnly.done, true);
 
       final full = dhuhr.markAll(true);
       expect(full.completedRakahs, 12);
