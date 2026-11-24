@@ -1,7 +1,94 @@
 import 'awrad_status.dart';
 
-/// Data model for a single daily prayer, including optional before-Sunnah (Dhuhr)
-/// and Witr (Isha) segments.
+/// User-customizable rak‘ah configuration for a single prayer's Sunnah & Witr.
+class PrayerSunnahConfig {
+  final String name;
+  final int fard;
+  final int beforeSunnah;
+  final int sunnah;
+  final int witr;
+
+  const PrayerSunnahConfig({
+    required this.name,
+    required this.fard,
+    this.beforeSunnah = 0,
+    this.sunnah = 0,
+    this.witr = 0,
+  });
+
+  PrayerSunnahConfig copyWith({
+    int? beforeSunnah,
+    int? sunnah,
+    int? witr,
+  }) {
+    return PrayerSunnahConfig(
+      name: name,
+      fard: fard,
+      beforeSunnah: beforeSunnah ?? this.beforeSunnah,
+      sunnah: sunnah ?? this.sunnah,
+      witr: witr ?? this.witr,
+    );
+  }
+
+  PrayerItem toPrayerItem() => PrayerItem(
+        name: name,
+        fard: fard,
+        beforeSunnah: beforeSunnah,
+        sunnah: sunnah,
+        witr: witr,
+      );
+
+  Map<String, dynamic> toMap() => {
+        'name': name,
+        'fard': fard,
+        'beforeSunnah': beforeSunnah,
+        'sunnah': sunnah,
+        'witr': witr,
+      };
+
+  factory PrayerSunnahConfig.fromMap(Map<String, dynamic> m) {
+    return PrayerSunnahConfig(
+      name: m['name'] as String,
+      fard: (m['fard'] as num).toInt(),
+      beforeSunnah: (m['beforeSunnah'] as num?)?.toInt() ?? 0,
+      sunnah: (m['sunnah'] as num?)?.toInt() ?? 0,
+      witr: (m['witr'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  /// Default: 12 Sunnah Mu'akkadah (Rawatib) + 3 Witr.
+  static const List<PrayerSunnahConfig> muakkadahDefaults = [
+    PrayerSunnahConfig(name: 'Fajr', fard: 2, beforeSunnah: 2, sunnah: 0),
+    PrayerSunnahConfig(name: 'Dhuhr', fard: 4, beforeSunnah: 4, sunnah: 2),
+    PrayerSunnahConfig(name: 'Asr', fard: 4, beforeSunnah: 0, sunnah: 0),
+    PrayerSunnahConfig(name: 'Maghrib', fard: 3, beforeSunnah: 0, sunnah: 2),
+    PrayerSunnahConfig(
+      name: 'Isha',
+      fard: 4,
+      beforeSunnah: 0,
+      sunnah: 2,
+      witr: 3,
+    ),
+  ];
+
+  /// Extended preset: Mu'akkadah + common Mustahabbah sunnah prayers.
+  static const List<PrayerSunnahConfig> muakkadahAndMustahabbah = [
+    PrayerSunnahConfig(name: 'Fajr', fard: 2, beforeSunnah: 2, sunnah: 0),
+    PrayerSunnahConfig(name: 'Dhuhr', fard: 4, beforeSunnah: 4, sunnah: 4),
+    PrayerSunnahConfig(name: 'Asr', fard: 4, beforeSunnah: 4, sunnah: 0),
+    PrayerSunnahConfig(name: 'Maghrib', fard: 3, beforeSunnah: 2, sunnah: 2),
+    PrayerSunnahConfig(
+      name: 'Isha',
+      fard: 4,
+      beforeSunnah: 2,
+      sunnah: 2,
+      witr: 3,
+    ),
+  ];
+}
+
+/// Data model for a single daily prayer, including optional Sunnah before/after
+/// Fard and Witr (Isha) segments.
 class PrayerItem {
   final String name;
   final int fard;
@@ -37,20 +124,15 @@ class PrayerItem {
       (sunnah > 0 && sunnahDone ? sunnah : 0) +
       (witr > 0 && witrDone ? witr : 0);
 
-  /// Computed tri-state completion status derived from all applicable segments.
+  /// If Fard is completed, the prayer is marked [AwradStatus.done].
+  /// If only non-Fard segments are checked, it is [AwradStatus.halfDone].
   AwradStatus get status {
-    final checks = <bool>[
-      inMasjid,
-      fardDone,
-      if (beforeSunnah > 0) beforeSunnahDone,
-      if (sunnah > 0) sunnahDone,
-      if (witr > 0) witrDone,
-    ];
-    final all = checks.every((c) => c);
-    final any = checks.any((c) => c);
-    if (all) return AwradStatus.done;
-    if (any) return AwradStatus.halfDone;
-    return AwradStatus.notDone;
+    if (fardDone) return AwradStatus.done;
+    final any = inMasjid ||
+        (beforeSunnah > 0 && beforeSunnahDone) ||
+        (sunnah > 0 && sunnahDone) ||
+        (witr > 0 && witrDone);
+    return any ? AwradStatus.halfDone : AwradStatus.notDone;
   }
 
   /// Tri-state checkbox value (`true` = done, `null` = halfDone, `false` = notDone).
@@ -82,10 +164,22 @@ class PrayerItem {
     );
   }
 
-  /// Marks every applicable segment on or off at once.
+  /// Applies updated Sunnah/Witr counts while preserving existing completion flags.
+  PrayerItem applyConfig(PrayerSunnahConfig config) {
+    return copyWith(
+      beforeSunnah: config.beforeSunnah,
+      sunnah: config.sunnah,
+      witr: config.witr,
+      beforeSunnahDone: config.beforeSunnah > 0 ? beforeSunnahDone : false,
+      sunnahDone: config.sunnah > 0 ? sunnahDone : false,
+      witrDone: config.witr > 0 ? witrDone : false,
+    );
+  }
+
+  /// Marks Fard and all configured Sunnah/Witr segments on or off at once.
   PrayerItem markAll(bool value) {
     return copyWith(
-      inMasjid: value,
+      inMasjid: value ? inMasjid : false,
       fardDone: value,
       beforeSunnahDone: beforeSunnah > 0 ? value : false,
       sunnahDone: sunnah > 0 ? value : false,
@@ -133,21 +227,21 @@ class DailyPrayerLog {
     required this.prayers,
   });
 
-  static List<PrayerItem> defaultPrayers() => const [
-        PrayerItem(name: 'Fajr', fard: 2, beforeSunnah: 0, sunnah: 2),
-        PrayerItem(name: 'Dhuhr', fard: 4, beforeSunnah: 4, sunnah: 4),
-        PrayerItem(name: 'Asr', fard: 4, beforeSunnah: 0, sunnah: 4),
-        PrayerItem(name: 'Maghrib', fard: 3, beforeSunnah: 0, sunnah: 2),
-        PrayerItem(name: 'Isha', fard: 4, beforeSunnah: 0, sunnah: 2, witr: 3),
-      ];
+  static List<PrayerItem> defaultPrayers([
+    List<PrayerSunnahConfig> config = PrayerSunnahConfig.muakkadahDefaults,
+  ]) =>
+      config.map((c) => c.toPrayerItem()).toList();
 
   int get totalPrayers => prayers.length;
-  int get completedPrayers => prayers.where((p) => p.status == AwradStatus.done).length;
-  int get halfDonePrayers => prayers.where((p) => p.status == AwradStatus.halfDone).length;
+  int get completedPrayers =>
+      prayers.where((p) => p.status == AwradStatus.done).length;
+  int get halfDonePrayers =>
+      prayers.where((p) => p.status == AwradStatus.halfDone).length;
   int get fardCompletedCount => prayers.where((p) => p.fardDone).length;
   int get inMasjidCount => prayers.where((p) => p.inMasjid).length;
   int get totalRakahs => prayers.fold(0, (sum, p) => sum + p.totalRakahs);
-  int get completedRakahs => prayers.fold(0, (sum, p) => sum + p.completedRakahs);
+  int get completedRakahs =>
+      prayers.fold(0, (sum, p) => sum + p.completedRakahs);
 
   double get completionScore {
     if (prayers.isEmpty) return 0.0;

@@ -10,6 +10,7 @@ import 'ui/pages/settings_page.dart';
 import 'ui/theme/app_theme.dart';
 import 'ui/widgets/awrad_task_sheet.dart';
 import 'ui/widgets/date_switcher_bar.dart';
+import 'ui/widgets/prayer_sunnah_sheet.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -101,6 +102,12 @@ class _AwradShellState extends ConsumerState<AwradShell> {
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
               ),
+            )
+          else if (_currentIndex == 1)
+            IconButton(
+              tooltip: 'Customize Sunnah',
+              icon: const Icon(Icons.tune_rounded),
+              onPressed: () => showPrayerSunnahSheet(context),
             )
           else
             const SizedBox(width: 4),

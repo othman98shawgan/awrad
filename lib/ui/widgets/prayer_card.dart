@@ -4,8 +4,9 @@ import '../../models/awrad_status.dart';
 import '../../models/prayer_item.dart';
 import '../theme/app_theme.dart';
 
-/// Serene Oasis prayer card with a circular tri-state toggle and direct
-/// one-tap chips for In Masjid, Fard, Before Sunnah, Sunnah, and Witr.
+/// Serene Oasis prayer card with a circular tri-state toggle, dedicated
+/// In Masjid icon button in the header (which tints the card in emerald),
+/// and direct one-tap chips for Sunnah, Fard, and Witr rak‘ahs.
 class PrayerCard extends StatelessWidget {
   final PrayerItem prayer;
   final ValueChanged<bool> onToggleAll;
@@ -33,17 +34,25 @@ class PrayerCard extends StatelessWidget {
     final status = prayer.status;
     final isDone = status == AwradStatus.done;
     final isHalf = status == AwradStatus.halfDone;
+    final inMasjid = prayer.inMasjid;
+
+    final cardColor = inMasjid
+        ? colors.emeraldSoft.withValues(alpha: 0.45)
+        : theme.colorScheme.surface;
+    final borderColor = inMasjid
+        ? colors.emerald.withValues(alpha: 0.55)
+        : isHalf
+            ? colors.amber.withValues(alpha: 0.45)
+            : colors.cardBorder;
 
     return Card(
+      color: cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color:
-              isHalf ? colors.amber.withValues(alpha: 0.45) : colors.cardBorder,
-        ),
+        side: BorderSide(color: borderColor, width: inMasjid ? 1.4 : 1),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -68,15 +77,21 @@ class PrayerCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${prayer.completedRakahs}/${prayer.totalRakahs} rak‘ahs',
+                  '${prayer.completedRakahs}/${prayer.totalRakahs}',
                   style: theme.textTheme.labelMedium?.copyWith(
                     color: isDone
                         ? colors.emerald
                         : isHalf
                             ? colors.amberText
                             : colors.mutedText,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
+                ),
+                const SizedBox(width: 8),
+                _MasjidToggleButton(
+                  prayerName: prayer.name,
+                  inMasjid: inMasjid,
+                  onTap: () => onToggleInMasjid(!inMasjid),
                 ),
               ],
             ),
@@ -85,15 +100,9 @@ class PrayerCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _SegmentChip(
-                  label: 'In Masjid',
-                  icon: Icons.mosque_outlined,
-                  selected: prayer.inMasjid,
-                  onTap: () => onToggleInMasjid(!prayer.inMasjid),
-                ),
                 if (prayer.beforeSunnah > 0)
                   _SegmentChip(
-                    label: 'Before Sunnah (${prayer.beforeSunnah})',
+                    label: 'Sunnah (${prayer.beforeSunnah})',
                     selected: prayer.beforeSunnahDone,
                     onTap: () => onToggleBeforeSunnah(!prayer.beforeSunnahDone),
                   ),
@@ -117,6 +126,56 @@ class PrayerCard extends StatelessWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MasjidToggleButton extends StatelessWidget {
+  final String prayerName;
+  final bool inMasjid;
+  final VoidCallback onTap;
+
+  const _MasjidToggleButton({
+    required this.prayerName,
+    required this.inMasjid,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.awradColors;
+
+    return Tooltip(
+      message: inMasjid ? 'Prayed in Masjid' : 'Mark in Masjid',
+      child: Semantics(
+        button: true,
+        label: '$prayerName in Masjid',
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: inMasjid
+                  ? colors.emerald
+                  : Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest
+                      .withValues(alpha: 0.45),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: inMasjid ? colors.emerald : colors.cardBorder,
+              ),
+            ),
+            child: Icon(
+              inMasjid ? Icons.mosque_rounded : Icons.mosque_outlined,
+              size: 16,
+              color: inMasjid ? Colors.white : colors.mutedText,
+            ),
+          ),
         ),
       ),
     );
@@ -182,13 +241,11 @@ class _PrayerTriStateToggle extends StatelessWidget {
 
 class _SegmentChip extends StatelessWidget {
   final String label;
-  final IconData? icon;
   final bool selected;
   final VoidCallback onTap;
 
   const _SegmentChip({
     required this.label,
-    this.icon,
     required this.selected,
     required this.onTap,
   });
@@ -219,14 +276,6 @@ class _SegmentChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (icon != null) ...[
-                Icon(
-                  icon,
-                  size: 14,
-                  color: selected ? colors.emerald : colors.mutedText,
-                ),
-                const SizedBox(width: 5),
-              ],
               Text(
                 label,
                 style: TextStyle(

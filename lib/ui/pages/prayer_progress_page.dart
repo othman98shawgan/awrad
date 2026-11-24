@@ -211,7 +211,6 @@ class _DailyPrayerStatusCard extends StatelessWidget {
                   child: _StatTile(
                     label: 'Prayers',
                     value: '$done / $total',
-                    subtitle: half > 0 ? '$half partial' : null,
                     accentColor: colors.emerald,
                   ),
                 ),
@@ -243,13 +242,11 @@ class _DailyPrayerStatusCard extends StatelessWidget {
 class _StatTile extends StatelessWidget {
   final String label;
   final String value;
-  final String? subtitle;
   final Color accentColor;
 
   const _StatTile({
     required this.label,
     required this.value,
-    this.subtitle,
     required this.accentColor,
   });
 
@@ -281,17 +278,6 @@ class _StatTile extends StatelessWidget {
               color: accentColor,
             ),
           ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              subtitle!,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: colors.amberText,
-              ),
-            ),
-          ],
         ],
       ),
     );
