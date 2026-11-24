@@ -465,9 +465,6 @@ class _DailyProgressCard extends ConsumerWidget {
         final isSelected = date == pageDate;
         final summary = byDate[date];
         final dayScore = isSelected ? currentDayScore : (summary?.awradScore ?? 0.0);
-        final hasPartial = isSelected
-            ? halfCount > 0
-            : (summary?.hasPartialAwrad ?? false);
         final cellColor = _colorForScore(dayScore, colors);
 
         return InkWell(
@@ -498,18 +495,6 @@ class _DailyProgressCard extends ConsumerWidget {
                         ? Border.all(color: colors.emerald, width: 2)
                         : null,
                   ),
-                  child: hasPartial && dayScore < 0.75
-                      ? Center(
-                          child: Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: colors.amber,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        )
-                      : null,
                 ),
               ],
             ),
