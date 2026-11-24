@@ -7,6 +7,31 @@ import 'awrad_provider.dart';
 import 'date_utils.dart';
 import 'prayer_provider.dart';
 
+/// Computes the current consecutive-day streak ending at [today] (or yesterday
+/// if [today] has no progress yet) where `awradScore > 0`.
+int computeAwradStreak(
+  List<DailyProgressSummary> summaries, {
+  DateTime? now,
+}) {
+  if (summaries.isEmpty) return 0;
+  final today = normalizeDate(now ?? DateTime.now());
+  final byDate = {for (final s in summaries) s.date: s};
+
+  var cursor = today;
+  if ((byDate[cursor]?.awradScore ?? 0) <= 0) {
+    cursor = DateTime(today.year, today.month, today.day - 1);
+  }
+
+  var streak = 0;
+  while (true) {
+    final summary = byDate[cursor];
+    if (summary == null || summary.awradScore <= 0) break;
+    streak++;
+    cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
+  }
+  return streak;
+}
+
 /// Aggregated Awrad + Prayer metrics for a single calendar day.
 class DailyProgressSummary {
   final DateTime date;
@@ -57,6 +82,7 @@ class ProgressRangeQuery {
 final progressRangeProvider = FutureProvider.autoDispose
     .family<List<DailyProgressSummary>, ProgressRangeQuery>((ref, query) async {
   ref.watch(awradDataVersionProvider);
+  ref.watch(prayerDataVersionProvider);
   final awradRepo = ref.watch(awradRepositoryProvider);
   final prayerRepo = ref.watch(prayerRepositoryProvider);
   final tasks = ref.watch(awradTasksProvider);

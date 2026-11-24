@@ -8,6 +8,9 @@ final prayerRepositoryProvider = Provider<PrayerRepository>((ref) {
   return LocalPrayerRepository();
 });
 
+/// Incremented whenever any daily prayer log mutates so progress reports refresh.
+final prayerDataVersionProvider = StateProvider<int>((ref) => 0);
+
 /// Manages the user's customizable Sunnah (Mu'akkadah / Mustahabbah) & Witr counts.
 final prayerConfigProvider =
     StateNotifierProvider<PrayerConfigNotifier, List<PrayerSunnahConfig>>(
@@ -45,16 +48,27 @@ final prayerListProvider = StateNotifierProvider.autoDispose
     .family<PrayerListNotifier, List<PrayerItem>, DateTime>((ref, date) {
   final repo = ref.watch(prayerRepositoryProvider);
   final config = ref.watch(prayerConfigProvider);
-  return PrayerListNotifier(repo, normalizeDate(date), config);
+  return PrayerListNotifier(
+    repo,
+    normalizeDate(date),
+    config,
+    onMutated: () => ref.read(prayerDataVersionProvider.notifier).state++,
+  );
 });
 
 class PrayerListNotifier extends StateNotifier<List<PrayerItem>> {
   final PrayerRepository _repo;
   final DateTime date;
   final List<PrayerSunnahConfig> _config;
+  final void Function()? _onMutated;
 
-  PrayerListNotifier(this._repo, this.date, this._config)
-      : super(DailyPrayerLog.defaultPrayers(_config)) {
+  PrayerListNotifier(
+    this._repo,
+    this.date,
+    this._config, {
+    void Function()? onMutated,
+  })  : _onMutated = onMutated,
+        super(DailyPrayerLog.defaultPrayers(_config)) {
     _load();
   }
 
@@ -123,5 +137,6 @@ class PrayerListNotifier extends StateNotifier<List<PrayerItem>> {
     await _repo.saveLog(
       DailyPrayerLog(dateKey: formatDateKey(date), prayers: updated),
     );
+    _onMutated?.call();
   }
 }

@@ -57,13 +57,6 @@ class AwradShell extends ConsumerStatefulWidget {
 class _AwradShellState extends ConsumerState<AwradShell> {
   int _currentIndex = 0;
 
-  static const _pages = [
-    HomePage(),
-    PrayerProgressPage(),
-    ProgressPage(),
-    SettingsPage(),
-  ];
-
   static const _titles = [
     'Awrad',
     'Daily Prayers',
@@ -75,6 +68,12 @@ class _AwradShellState extends ConsumerState<AwradShell> {
   Widget build(BuildContext context) {
     final colors = context.awradColors;
     final showTodayAction = _currentIndex == 0 || _currentIndex == 1;
+    final pages = [
+      const HomePage(),
+      const PrayerProgressPage(),
+      ProgressPage(onJumpToAwrad: () => setState(() => _currentIndex = 0)),
+      const SettingsPage(),
+    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -115,7 +114,7 @@ class _AwradShellState extends ConsumerState<AwradShell> {
       ),
       body: IndexedStack(
         index: _currentIndex,
-        children: _pages,
+        children: pages,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
