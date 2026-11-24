@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/settings_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/template_import_sheet.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -82,9 +83,9 @@ class SettingsPage extends ConsumerWidget {
               ListTile(
                 leading: Icon(Icons.playlist_add, color: colors.emerald),
                 title: const Text('Import Awrad Templates'),
-                subtitle: const Text('Coming in Task 3'),
+                subtitle: const Text('Browse curated daily & Ramadan lists'),
                 trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {},
+                onTap: () => showTemplateImportSheet(context),
               ),
               const Divider(),
               ListTile(

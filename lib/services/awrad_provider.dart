@@ -11,6 +11,9 @@ final awradRepositoryProvider = Provider<AwradRepository>((ref) {
   return LocalAwradRepository();
 });
 
+/// Incremented whenever any daily Awrad log mutates so range summaries refresh.
+final awradDataVersionProvider = StateProvider<int>((ref) => 0);
+
 /// Manages the user's master list of Awrad task definitions.
 final awradTasksProvider =
     StateNotifierProvider<AwradTasksNotifier, List<AwradTask>>((ref) {
@@ -127,15 +130,24 @@ class AwradTasksNotifier extends StateNotifier<List<AwradTask>> {
 final dailyAwradLogProvider = StateNotifierProvider.autoDispose
     .family<DailyAwradLogNotifier, DailyAwradLog, DateTime>((ref, date) {
   final repo = ref.watch(awradRepositoryProvider);
-  return DailyAwradLogNotifier(repo, normalizeDate(date));
+  return DailyAwradLogNotifier(
+    repo,
+    normalizeDate(date),
+    onMutated: () => ref.read(awradDataVersionProvider.notifier).state++,
+  );
 });
 
 class DailyAwradLogNotifier extends StateNotifier<DailyAwradLog> {
   final AwradRepository _repo;
   final DateTime date;
+  final void Function()? _onMutated;
 
-  DailyAwradLogNotifier(this._repo, this.date)
-      : super(DailyAwradLog(dateKey: formatDateKey(date))) {
+  DailyAwradLogNotifier(
+    this._repo,
+    this.date, {
+    void Function()? onMutated,
+  })  : _onMutated = onMutated,
+        super(DailyAwradLog(dateKey: formatDateKey(date))) {
     _load();
   }
 
@@ -154,6 +166,7 @@ class DailyAwradLogNotifier extends StateNotifier<DailyAwradLog> {
     );
     state = state.withEntry(taskId, entry);
     await _repo.saveLog(state);
+    _onMutated?.call();
   }
 
   Future<void> cycleTaskStatus(String taskId) async {
@@ -171,5 +184,6 @@ class DailyAwradLogNotifier extends StateNotifier<DailyAwradLog> {
     );
     state = state.withEntry(taskId, entry);
     await _repo.saveLog(state);
+    _onMutated?.call();
   }
 }

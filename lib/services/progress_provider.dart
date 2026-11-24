@@ -56,6 +56,7 @@ class ProgressRangeQuery {
 /// Computes daily progress summaries across a date range for heatmaps & reports.
 final progressRangeProvider = FutureProvider.autoDispose
     .family<List<DailyProgressSummary>, ProgressRangeQuery>((ref, query) async {
+  ref.watch(awradDataVersionProvider);
   final awradRepo = ref.watch(awradRepositoryProvider);
   final prayerRepo = ref.watch(prayerRepositoryProvider);
   final tasks = ref.watch(awradTasksProvider);
