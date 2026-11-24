@@ -158,10 +158,10 @@ class _PrayerLocationToggle extends StatelessWidget {
     final homeSelected = fardDone && !inMasjid;
 
     return Container(
-      padding: const EdgeInsets.all(2),
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: inMasjid ? colors.emerald.withValues(alpha: 0.5) : colors.cardBorder,
         ),
@@ -176,18 +176,18 @@ class _PrayerLocationToggle extends StatelessWidget {
               label: '$prayerName at home',
               child: InkWell(
                 onTap: onSelectHome,
-                borderRadius: BorderRadius.circular(9),
+                borderRadius: BorderRadius.circular(10),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 5,
+                    horizontal: 10,
+                    vertical: 7,
                   ),
                   decoration: BoxDecoration(
                     color: homeSelected
                         ? theme.colorScheme.surface
                         : Colors.transparent,
-                    borderRadius: BorderRadius.circular(9),
+                    borderRadius: BorderRadius.circular(10),
                     boxShadow: homeSelected
                         ? [
                             BoxShadow(
@@ -200,7 +200,7 @@ class _PrayerLocationToggle extends StatelessWidget {
                   ),
                   child: Icon(
                     homeSelected ? Icons.home_rounded : Icons.home_outlined,
-                    size: 16,
+                    size: 22,
                     color: homeSelected
                         ? theme.colorScheme.onSurface
                         : colors.mutedText,
@@ -216,20 +216,20 @@ class _PrayerLocationToggle extends StatelessWidget {
               label: '$prayerName in Masjid',
               child: InkWell(
                 onTap: onSelectMasjid,
-                borderRadius: BorderRadius.circular(9),
+                borderRadius: BorderRadius.circular(10),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 5,
+                    horizontal: 10,
+                    vertical: 7,
                   ),
                   decoration: BoxDecoration(
                     color: inMasjid ? colors.emerald : Colors.transparent,
-                    borderRadius: BorderRadius.circular(9),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     inMasjid ? Icons.mosque_rounded : Icons.mosque_outlined,
-                    size: 16,
+                    size: 22,
                     color: inMasjid ? Colors.white : colors.mutedText,
                   ),
                 ),

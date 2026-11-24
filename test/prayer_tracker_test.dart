@@ -29,6 +29,12 @@ void main() {
     expect(find.textContaining('Before Sunnah'), findsNothing);
     expect(find.text('Fajr'), findsOneWidget);
     expect(find.text('Dhuhr'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Asr'),
+      150,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Asr'), findsOneWidget);
 
     await tester.scrollUntilVisible(
