@@ -78,7 +78,20 @@ class PrayerListNotifier extends StateNotifier<List<PrayerItem>> {
   }
 
   Future<void> toggleInMasjid(int index, bool value) async {
-    await _updateAt(index, (p) => p.copyWith(inMasjid: value));
+    await _updateAt(
+      index,
+      (p) => p.copyWith(
+        inMasjid: value,
+        fardDone: value ? true : p.fardDone,
+      ),
+    );
+  }
+
+  Future<void> markAtHome(int index) async {
+    await _updateAt(
+      index,
+      (p) => p.copyWith(inMasjid: false, fardDone: true),
+    );
   }
 
   Future<void> toggleFard(int index, bool value) async {

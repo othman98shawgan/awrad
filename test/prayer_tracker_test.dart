@@ -54,19 +54,20 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Tap Fajr's Fard (2) chip -> marks prayer done (1 / 5), 2 / 32 rak'ahs, no "partial" text
-    await tester.tap(find.text('Fard (2)'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('1 / 5'), findsOneWidget);
-    expect(find.text('2 / 32'), findsOneWidget);
-    expect(find.textContaining('partial'), findsNothing);
-
-    // Tap Fajr's Masjid button -> In Masjid updates to 1 / 5
+    // Tap Fajr's Masjid icon -> marks Fard done (1 / 5) AND In Masjid (1 / 5)
     await tester.tap(find.bySemanticsLabel('Fajr in Masjid'));
     await tester.pumpAndSettle();
 
     expect(find.text('1 / 5'), findsNWidgets(2));
+    expect(find.text('2 / 32'), findsOneWidget);
+    expect(find.textContaining('partial'), findsNothing);
+
+    // Tap Fajr's Home icon -> switches back to home (In Masjid = 0 / 5, Prayers still 1 / 5)
+    await tester.tap(find.bySemanticsLabel('Fajr at home'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 / 5'), findsOneWidget);
+    expect(find.text('0 / 5'), findsOneWidget);
   });
 
   testWidgets('Customize Sunnah sheet updates rakah totals with Mustahabbah preset',

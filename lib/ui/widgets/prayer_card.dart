@@ -10,7 +10,8 @@ import '../theme/app_theme.dart';
 class PrayerCard extends StatelessWidget {
   final PrayerItem prayer;
   final ValueChanged<bool> onToggleAll;
-  final ValueChanged<bool> onToggleInMasjid;
+  final VoidCallback onSelectHome;
+  final VoidCallback onSelectMasjid;
   final ValueChanged<bool> onToggleFard;
   final ValueChanged<bool> onToggleBeforeSunnah;
   final ValueChanged<bool> onToggleSunnah;
@@ -20,7 +21,8 @@ class PrayerCard extends StatelessWidget {
     super.key,
     required this.prayer,
     required this.onToggleAll,
-    required this.onToggleInMasjid,
+    required this.onSelectHome,
+    required this.onSelectMasjid,
     required this.onToggleFard,
     required this.onToggleBeforeSunnah,
     required this.onToggleSunnah,
@@ -88,10 +90,12 @@ class PrayerCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                _MasjidToggleButton(
+                _PrayerLocationToggle(
                   prayerName: prayer.name,
+                  fardDone: prayer.fardDone,
                   inMasjid: inMasjid,
-                  onTap: () => onToggleInMasjid(!inMasjid),
+                  onSelectHome: onSelectHome,
+                  onSelectMasjid: onSelectMasjid,
                 ),
               ],
             ),
@@ -132,51 +136,107 @@ class PrayerCard extends StatelessWidget {
   }
 }
 
-class _MasjidToggleButton extends StatelessWidget {
+class _PrayerLocationToggle extends StatelessWidget {
   final String prayerName;
+  final bool fardDone;
   final bool inMasjid;
-  final VoidCallback onTap;
+  final VoidCallback onSelectHome;
+  final VoidCallback onSelectMasjid;
 
-  const _MasjidToggleButton({
+  const _PrayerLocationToggle({
     required this.prayerName,
+    required this.fardDone,
     required this.inMasjid,
-    required this.onTap,
+    required this.onSelectHome,
+    required this.onSelectMasjid,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.awradColors;
+    final theme = Theme.of(context);
+    final homeSelected = fardDone && !inMasjid;
 
-    return Tooltip(
-      message: inMasjid ? 'Prayed in Masjid' : 'Mark in Masjid',
-      child: Semantics(
-        button: true,
-        label: '$prayerName in Masjid',
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              color: inMasjid
-                  ? colors.emerald
-                  : Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest
-                      .withValues(alpha: 0.45),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: inMasjid ? colors.emerald : colors.cardBorder,
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: inMasjid ? colors.emerald.withValues(alpha: 0.5) : colors.cardBorder,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Tooltip(
+            message: 'Prayed at home',
+            child: Semantics(
+              button: true,
+              label: '$prayerName at home',
+              child: InkWell(
+                onTap: onSelectHome,
+                borderRadius: BorderRadius.circular(9),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: homeSelected
+                        ? theme.colorScheme.surface
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(9),
+                    boxShadow: homeSelected
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 2,
+                              offset: const Offset(0, 1),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Icon(
+                    homeSelected ? Icons.home_rounded : Icons.home_outlined,
+                    size: 16,
+                    color: homeSelected
+                        ? theme.colorScheme.onSurface
+                        : colors.mutedText,
+                  ),
+                ),
               ),
             ),
-            child: Icon(
-              inMasjid ? Icons.mosque_rounded : Icons.mosque_outlined,
-              size: 16,
-              color: inMasjid ? Colors.white : colors.mutedText,
+          ),
+          Tooltip(
+            message: 'Prayed in Masjid',
+            child: Semantics(
+              button: true,
+              label: '$prayerName in Masjid',
+              child: InkWell(
+                onTap: onSelectMasjid,
+                borderRadius: BorderRadius.circular(9),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: inMasjid ? colors.emerald : Colors.transparent,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Icon(
+                    inMasjid ? Icons.mosque_rounded : Icons.mosque_outlined,
+                    size: 16,
+                    color: inMasjid ? Colors.white : colors.mutedText,
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -113,7 +113,8 @@ class _DailyPrayerView extends ConsumerWidget {
           PrayerCard(
             prayer: prayers[i],
             onToggleAll: (mark) => notifier.toggleMain(i, mark),
-            onToggleInMasjid: (v) => notifier.toggleInMasjid(i, v),
+            onSelectHome: () => notifier.markAtHome(i),
+            onSelectMasjid: () => notifier.toggleInMasjid(i, true),
             onToggleFard: (v) => notifier.toggleFard(i, v),
             onToggleBeforeSunnah: (v) => notifier.toggleBeforeSunnah(i, v),
             onToggleSunnah: (v) => notifier.toggleSunnah(i, v),
