@@ -61,6 +61,28 @@ class DailyProgressSummary {
   bool get hasPartialAwrad => awradHalfDone > 0;
 }
 
+/// Per-task completion breakdown over a selected date range.
+class AwradTaskSummary {
+  final String taskId;
+  final String title;
+  final int applicableDays;
+  final int doneDays;
+  final int halfDays;
+
+  const AwradTaskSummary({
+    required this.taskId,
+    required this.title,
+    required this.applicableDays,
+    required this.doneDays,
+    required this.halfDays,
+  });
+
+  double get completionRate {
+    if (applicableDays == 0) return 0.0;
+    return (doneDays + (halfDays * 0.5)) / applicableDays;
+  }
+}
+
 /// Parameter object for querying progress over an inclusive date range.
 class ProgressRangeQuery {
   final DateTime start;
@@ -130,4 +152,41 @@ final progressRangeProvider = FutureProvider.autoDispose
     );
   }
   return summaries;
+});
+
+/// Computes per-task completion breakdown across [ProgressRangeQuery].
+final awradTaskBreakdownProvider = FutureProvider.autoDispose
+    .family<List<AwradTaskSummary>, ProgressRangeQuery>((ref, query) async {
+  ref.watch(awradDataVersionProvider);
+  final awradRepo = ref.watch(awradRepositoryProvider);
+  final tasks = ref.watch(awradTasksProvider);
+
+  final effectiveTasks = tasks.isNotEmpty ? tasks : await awradRepo.loadTasks();
+  final awradLogs = await awradRepo.loadLogsInRange(query.start, query.end);
+  final days = datesInRange(query.start, query.end);
+
+  return effectiveTasks
+      .where((t) => !t.isArchived)
+      .map((task) {
+        int applicable = 0;
+        int done = 0;
+        int half = 0;
+        for (final date in days) {
+          if (!task.appliesTo(date)) continue;
+          applicable++;
+          final key = formatDateKey(date);
+          final status = awradLogs[key]?.statusFor(task.id) ?? AwradStatus.notDone;
+          if (status == AwradStatus.done) done++;
+          if (status == AwradStatus.halfDone) half++;
+        }
+        return AwradTaskSummary(
+          taskId: task.id,
+          title: task.title,
+          applicableDays: applicable,
+          doneDays: done,
+          halfDays: half,
+        );
+      })
+      .where((s) => s.applicableDays > 0)
+      .toList();
 });

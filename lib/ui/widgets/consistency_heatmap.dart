@@ -23,6 +23,15 @@ class ConsistencyHeatmap extends StatelessWidget {
   });
 
   static const _dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  static const _sundayFirstLabels = [
+    'Sun',
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -163,8 +172,8 @@ class ConsistencyHeatmap extends StatelessWidget {
   ) {
     if (days.isEmpty) return const SizedBox.shrink();
 
-    // Pad leading slots before the 1st of the month so rows align Mon(0)..Sun(6).
-    final leadingBlanks = days.first.date.weekday - 1;
+    // Pad leading slots before the 1st of the month so rows align Sun(0)..Sat(6).
+    final leadingBlanks = days.first.date.weekday % 7;
     final cells = <DailyProgressSummary?>[
       ...List<DailyProgressSummary?>.filled(leadingBlanks, null),
       ...days,
@@ -188,7 +197,7 @@ class ConsistencyHeatmap extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: showLabel
                     ? Text(
-                        _dayLabels[weekdayIdx],
+                        _sundayFirstLabels[weekdayIdx],
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: colors.mutedText,
                         ),

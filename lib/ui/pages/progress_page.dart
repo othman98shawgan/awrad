@@ -109,10 +109,13 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
     final (start, end) = _currentRange();
     final label = _periodLabel(start, end);
 
-    final rangeAsync = ref.watch(
-      progressRangeProvider(ProgressRangeQuery(start, end)),
-    );
+    final rangeQuery = ProgressRangeQuery(start, end);
+    final rangeAsync = ref.watch(progressRangeProvider(rangeQuery));
     final days = rangeAsync.valueOrNull ?? const <DailyProgressSummary>[];
+    final taskBreakdownAsync =
+        ref.watch(awradTaskBreakdownProvider(rangeQuery));
+    final taskSummaries =
+        taskBreakdownAsync.valueOrNull ?? const <AwradTaskSummary>[];
 
     final streakEnd = normalizeDate(DateTime.now());
     final streakStart =
@@ -244,14 +247,14 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Teacher Report',
+                        'Progress Report',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Share your $label summary with your teacher',
+                        'Share your $label summary',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colors.mutedText,
                         ),
@@ -263,10 +266,11 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
                 FilledButton.icon(
                   onPressed: days.isEmpty
                       ? null
-                      : () => showTeacherReportSheet(
+                      : () => showProgressReportSheet(
                             context,
                             periodLabel: label,
                             days: days,
+                            taskSummaries: taskSummaries,
                             streakDays: streak,
                           ),
                   icon: const Icon(Icons.ios_share_rounded, size: 17),
