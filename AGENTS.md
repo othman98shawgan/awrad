@@ -13,7 +13,7 @@ When preparing a Pull Request reminder, always format the PR Description inside 
 
 ## Roadmap
 - [x] **Task 1 (`chore/architecture-data-refactor`)**: Minimalist 3-folder (`models/` / `services/` / `ui/`) refactor, separated sync-ready `AwradTask` + `DailyAwradLog` + `DailyPrayerLog` repositories, automatic legacy migration, normalized date provider, accurate partial rak‘ahs, and unit tests.
-- [ ] **Task 2 (`feat/serene-oasis-theme-shell`)**: "Serene Oasis" Material 3 light & dark theme (`#27`, `#28`), unified 4-tab app shell (single AppBar), and shared swipeable date switcher + calendar picker (`#18`, `#20`).
+- [x] **Task 2 (`feat/serene-oasis-theme-shell`)**: "Serene Oasis" Material 3 light & dark theme (`#27`, `#28`), unified 4-tab app shell (single AppBar), and shared swipeable date switcher + calendar picker (`#18`, `#20`).
 - [ ] **Task 3 (`feat/daily-awrad-crud-templates`)**: Redesigned Daily Awrad screen (segmented progress card, 7-day strip, tri-state half-done cards, drag reorder `#24`, task notes `#25`), add/edit/delete + recurrence (`#7`–`#11`), and Import Awrad Templates (`#12`).
 - [ ] **Task 4 (`feat/prayer-tracker-redesign`)**: Redesigned Prayer Tracker tab with daily status card and tri-state prayer cards.
 - [ ] **Task 5 (`feat/progress-heatmap-teacher-report`)**: Progress tab with GitHub-style heatmap (`#14`–`#17`), weekly/monthly toggle, tap-day view, and shareable Teacher Report.

@@ -29,3 +29,36 @@ List<DateTime> datesInRange(DateTime start, DateTime end) {
   final days = e.difference(s).inDays + 1;
   return List.generate(days, (i) => DateTime(s.year, s.month, s.day + i));
 }
+
+const _weekdayShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const _monthShort = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+/// Formats [date] into a friendly label such as `Today · Tue, Nov 24`
+/// or `Mon, Nov 16` (including year when different from [now]).
+String formatFriendlyDate(DateTime date, {DateTime? now}) {
+  final target = normalizeDate(date);
+  final today = normalizeDate(now ?? DateTime.now());
+  final diff = target.difference(today).inDays;
+
+  final dayPart =
+      '${_weekdayShort[target.weekday - 1]}, ${_monthShort[target.month - 1]} ${target.day}';
+  final withYear = target.year == today.year ? dayPart : '$dayPart, ${target.year}';
+
+  if (diff == 0) return 'Today · $dayPart';
+  if (diff == -1) return 'Yesterday · $dayPart';
+  if (diff == 1) return 'Tomorrow · $dayPart';
+  return withYear;
+}
