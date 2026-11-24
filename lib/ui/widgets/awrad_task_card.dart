@@ -71,44 +71,17 @@ class AwradTaskCard extends StatelessWidget {
                             : theme.colorScheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDone
-                                ? colors.emeraldSoft
-                                : theme.colorScheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.45),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            task.category.label,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: isDone ? colors.emerald : colors.mutedText,
-                            ),
-                          ),
+                    if (effectiveNote != null && effectiveNote.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        effectiveNote,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.mutedText,
                         ),
-                        if (effectiveNote != null && effectiveNote.isNotEmpty)
-                          Text(
-                            effectiveNote,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colors.mutedText,
-                            ),
-                          ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ],
                 ),
               ),

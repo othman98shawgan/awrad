@@ -51,13 +51,13 @@ class _AwradTaskSheetState extends ConsumerState<_AwradTaskSheet> {
   late Set<int> _selectedWeekdays;
 
   static const _weekdayLabels = [
-    (DateTime.monday, 'M'),
-    (DateTime.tuesday, 'T'),
-    (DateTime.wednesday, 'W'),
-    (DateTime.thursday, 'T'),
-    (DateTime.friday, 'F'),
-    (DateTime.saturday, 'S'),
-    (DateTime.sunday, 'S'),
+    (DateTime.monday, 'Mon'),
+    (DateTime.tuesday, 'Tue'),
+    (DateTime.wednesday, 'Wed'),
+    (DateTime.thursday, 'Thu'),
+    (DateTime.friday, 'Fri'),
+    (DateTime.saturday, 'Sat'),
+    (DateTime.sunday, 'Sun'),
   ];
 
   bool get _isEditing => widget.task != null;
@@ -69,7 +69,7 @@ class _AwradTaskSheetState extends ConsumerState<_AwradTaskSheet> {
     _titleController = TextEditingController(text: t?.title ?? '');
     _noteController = TextEditingController(text: t?.note ?? '');
     _dailyNoteController = TextEditingController(text: widget.dailyNote ?? '');
-    _category = t?.category ?? AwradCategory.adhkar;
+    _category = t?.category ?? AwradCategory.other;
     _selectedWeekdays = Set<int>.from(t?.repeatWeekdays ?? const {});
     _everyDay = _selectedWeekdays.isEmpty;
   }
@@ -184,32 +184,6 @@ class _AwradTaskSheetState extends ConsumerState<_AwradTaskSheet> {
                 },
               ),
               const SizedBox(height: 16),
-              Text(
-                'Category',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: colors.mutedText,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: AwradCategory.values.map((cat) {
-                  final selected = _category == cat;
-                  return ChoiceChip(
-                    label: Text(cat.label),
-                    selected: selected,
-                    selectedColor: colors.emeraldSoft,
-                    labelStyle: TextStyle(
-                      color: selected ? colors.emerald : null,
-                      fontWeight:
-                          selected ? FontWeight.w600 : FontWeight.w500,
-                    ),
-                    onSelected: (_) => setState(() => _category = cat),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -238,32 +212,39 @@ class _AwradTaskSheetState extends ConsumerState<_AwradTaskSheet> {
               ),
               if (!_everyDay) ...[
                 const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: _weekdayLabels.map((entry) {
-                    final day = entry.$1;
-                    final label = entry.$2;
-                    final selected = _selectedWeekdays.contains(day);
-                    return FilterChip(
-                      showCheckmark: false,
-                      label: Text(label),
-                      selected: selected,
-                      selectedColor: colors.emerald,
-                      labelStyle: TextStyle(
-                        color: selected ? Colors.white : null,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      onSelected: (isOn) {
-                        setState(() {
-                          if (isOn) {
-                            _selectedWeekdays.add(day);
-                          } else if (_selectedWeekdays.length > 1) {
-                            _selectedWeekdays.remove(day);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (int i = 0; i < _weekdayLabels.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 8),
+                        FilterChip(
+                          showCheckmark: false,
+                          label: Text(_weekdayLabels[i].$2),
+                          selected:
+                              _selectedWeekdays.contains(_weekdayLabels[i].$1),
+                          selectedColor: colors.emerald,
+                          labelStyle: TextStyle(
+                            color: _selectedWeekdays
+                                    .contains(_weekdayLabels[i].$1)
+                                ? Colors.white
+                                : null,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          onSelected: (isOn) {
+                            final day = _weekdayLabels[i].$1;
+                            setState(() {
+                              if (isOn) {
+                                _selectedWeekdays.add(day);
+                              } else if (_selectedWeekdays.length > 1) {
+                                _selectedWeekdays.remove(day);
+                              }
+                            });
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ],
               const SizedBox(height: 16),
