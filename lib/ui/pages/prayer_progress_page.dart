@@ -168,7 +168,7 @@ class _PrayerProgressPageState extends ConsumerState<PrayerProgressPage> {
                                     title: Text('Witr (${p.witr} rak‘ahs)'),
                                     value: p.witrDone,
                                     onChanged: (v) => notifier.toggleWitr(i, v!),
-                                    activeColor: Colors.blue,
+                                    activeColor: Colors.green,
                                     controlAffinity: ListTileControlAffinity.leading,
                                     contentPadding: EdgeInsets.zero,
                                   ),
