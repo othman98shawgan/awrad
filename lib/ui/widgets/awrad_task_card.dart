@@ -5,13 +5,14 @@ import '../../models/awrad_task.dart';
 import '../theme/app_theme.dart';
 
 /// Tri-state Awrad task card with custom circular toggle, category tag,
-/// optional note, half-done amber badge, and optional drag handle.
+/// optional note, and optional drag handle.
+/// Tap toggles completion status; long press opens the edit sheet.
 class AwradTaskCard extends StatelessWidget {
   final AwradTask task;
   final AwradStatus status;
   final String? dailyNote;
   final VoidCallback onToggleStatus;
-  final VoidCallback onTap;
+  final VoidCallback onLongPress;
   final int? reorderIndex;
 
   const AwradTaskCard({
@@ -20,7 +21,7 @@ class AwradTaskCard extends StatelessWidget {
     required this.status,
     this.dailyNote,
     required this.onToggleStatus,
-    required this.onTap,
+    required this.onLongPress,
     this.reorderIndex,
   });
 
@@ -38,12 +39,14 @@ class AwradTaskCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: isHalf ? colors.amber.withValues(alpha: 0.45) : colors.cardBorder,
+          color:
+              isHalf ? colors.amber.withValues(alpha: 0.45) : colors.cardBorder,
         ),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
+        onTap: onToggleStatus,
+        onLongPress: onLongPress,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
@@ -57,84 +60,28 @@ class AwradTaskCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            task.title,
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              fontWeight:
-                                  isDone ? FontWeight.w500 : FontWeight.w600,
-                              decoration: isDone
-                                  ? TextDecoration.lineThrough
-                                  : null,
-                              color: isDone
-                                  ? colors.mutedText
-                                  : theme.colorScheme.onSurface,
-                            ),
-                          ),
-                        ),
-                        if (isHalf) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colors.amberSoft,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              'Half done',
-                              style: TextStyle(
-                                color: colors.amberText,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+                    Text(
+                      task.title,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: isDone ? FontWeight.w500 : FontWeight.w600,
+                        decoration:
+                            isDone ? TextDecoration.lineThrough : null,
+                        color: isDone
+                            ? colors.mutedText
+                            : theme.colorScheme.onSurface,
+                      ),
                     ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDone
-                                ? colors.emeraldSoft
-                                : theme.colorScheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.45),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            task.category.label,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: isDone ? colors.emerald : colors.mutedText,
-                            ),
-                          ),
+                    if (effectiveNote != null && effectiveNote.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        effectiveNote,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.mutedText,
                         ),
-                        if (effectiveNote != null && effectiveNote.isNotEmpty)
-                          Text(
-                            effectiveNote,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colors.mutedText,
-                            ),
-                          ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ],
                 ),
               ),

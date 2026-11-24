@@ -5,9 +5,69 @@ import '../../services/date_utils.dart';
 import '../../services/selected_date_provider.dart';
 import '../theme/app_theme.dart';
 
+/// Custom calendar icon button displaying today's day-of-month number.
+/// Tapping jumps [selectedDateProvider] directly back to today.
+class TodayCalendarButton extends ConsumerWidget {
+  const TodayCalendarButton({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(selectedDateProvider);
+    final today = normalizeDate(DateTime.now());
+    final isToday = selected == today;
+    final colors = context.awradColors;
+
+    final borderColor = isToday ? colors.cardBorder : colors.emerald;
+    final headerColor = isToday ? colors.mutedText : colors.emerald;
+    final bgColor = isToday
+        ? Theme.of(context).colorScheme.surface
+        : colors.emeraldSoft;
+    final numberColor =
+        isToday ? Theme.of(context).colorScheme.onSurface : colors.emerald;
+
+    return IconButton(
+      tooltip: 'Go to today',
+      onPressed: isToday
+          ? null
+          : () => ref.read(selectedDateProvider.notifier).goToToday(),
+      icon: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: borderColor, width: 1.5),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            Container(
+              height: 6,
+              width: double.infinity,
+              color: headerColor,
+            ),
+            Expanded(
+              child: Center(
+                child: Text(
+                  '${today.day}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    height: 1,
+                    fontWeight: FontWeight.w800,
+                    color: numberColor,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Shared floating date navigation bar synced with [selectedDateProvider].
-/// Supports prev/next day stepping, tapping to open a calendar picker, and
-/// a one-tap "Today" return pill when viewing another date.
+/// Supports prev/next day stepping and tapping the date to open a calendar picker.
 class DateSwitcherBar extends ConsumerWidget {
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
@@ -39,7 +99,6 @@ class DateSwitcherBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final date = ref.watch(selectedDateProvider);
     final today = normalizeDate(DateTime.now());
-    final isToday = date == today;
     final colors = context.awradColors;
     final theme = Theme.of(context);
 
@@ -65,68 +124,31 @@ class DateSwitcherBar extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(10),
                 onTap: () => openCalendarPicker(context, ref),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Column(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              formatFriendlyDate(date, now: today),
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
+                      Flexible(
+                        child: Text(
+                          formatFriendlyDate(date, now: today),
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
                           ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.calendar_today_rounded,
-                            size: 14,
-                            color: colors.emerald,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Swipe days or tap for calendar',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colors.mutedText,
                         ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.calendar_today_rounded,
+                        size: 14,
+                        color: colors.emerald,
                       ),
                     ],
                   ),
                 ),
               ),
             ),
-            if (!isToday)
-              Padding(
-                padding: const EdgeInsets.only(right: 2),
-                child: TextButton(
-                  style: TextButton.styleFrom(
-                    backgroundColor: colors.emeraldSoft,
-                    foregroundColor: colors.emerald,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    minimumSize: const Size(0, 30),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  onPressed: () =>
-                      ref.read(selectedDateProvider.notifier).goToToday(),
-                  child: const Text(
-                    'Today',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
             IconButton(
               tooltip: 'Next day',
               icon: const Icon(Icons.chevron_right_rounded),

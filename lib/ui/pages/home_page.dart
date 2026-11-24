@@ -264,7 +264,7 @@ class _DailyAwradPage extends ConsumerWidget {
                     dailyNote: dailyNote,
                     reorderIndex: idx,
                     onToggleStatus: () => logNotifier.cycleTaskStatus(task.id),
-                    onTap: () => showAwradTaskSheet(
+                    onLongPress: () => showAwradTaskSheet(
                       context,
                       task: task,
                       forDate: pageDate,
@@ -291,7 +291,7 @@ class _DailyAwradPage extends ConsumerWidget {
                   status: status,
                   dailyNote: dailyNote,
                   onToggleStatus: () => logNotifier.cycleTaskStatus(task.id),
-                  onTap: () => showAwradTaskSheet(
+                  onLongPress: () => showAwradTaskSheet(
                     context,
                     task: task,
                     forDate: pageDate,
@@ -430,70 +430,13 @@ class _DailyProgressCard extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 14),
-            weekAsync.when(
-              loading: () => const SizedBox(height: 42),
-              error: (_, __) => const SizedBox.shrink(),
-              data: (days) => Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: days.map((day) {
-                  final isSelected = day.date == pageDate;
-                  final cellColor = _colorForDay(day, colors);
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(8),
-                    onTap: () => ref
-                        .read(selectedDateProvider.notifier)
-                        .selectDate(day.date),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2,
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            _dayLetters[day.date.weekday - 1],
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              fontWeight: isSelected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              color: isSelected
-                                  ? colors.emerald
-                                  : colors.mutedText,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            width: 26,
-                            height: 26,
-                            decoration: BoxDecoration(
-                              color: cellColor,
-                              borderRadius: BorderRadius.circular(7),
-                              border: isSelected
-                                  ? Border.all(
-                                      color: colors.emerald,
-                                      width: 2,
-                                    )
-                                  : null,
-                            ),
-                            child: day.hasPartialAwrad && day.awradScore < 0.75
-                                ? Center(
-                                    child: Container(
-                                      width: 6,
-                                      height: 6,
-                                      decoration: BoxDecoration(
-                                        color: colors.amber,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  )
-                                : null,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
+            _buildWeekStrip(
+              context,
+              ref,
+              colors,
+              theme,
+              weekAsync.valueOrNull,
+              score,
             ),
           ],
         ),
@@ -501,11 +444,70 @@ class _DailyProgressCard extends ConsumerWidget {
     );
   }
 
-  Color _colorForDay(DailyProgressSummary day, AwradColors colors) {
-    final s = day.awradScore;
-    if (s <= 0) return colors.heatmapLevels[0];
-    if (s < 0.4) return colors.heatmapLevels[1];
-    if (s < 0.75) return colors.heatmapLevels[2];
+  Widget _buildWeekStrip(
+    BuildContext context,
+    WidgetRef ref,
+    AwradColors colors,
+    ThemeData theme,
+    List<DailyProgressSummary>? days,
+    double currentDayScore,
+  ) {
+    final start = DateTime(pageDate.year, pageDate.month, pageDate.day - 6);
+    final dates = datesInRange(start, pageDate);
+    final byDate = {
+      if (days != null)
+        for (final d in days) d.date: d,
+    };
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: dates.map((date) {
+        final isSelected = date == pageDate;
+        final summary = byDate[date];
+        final dayScore = isSelected ? currentDayScore : (summary?.awradScore ?? 0.0);
+        final cellColor = _colorForScore(dayScore, colors);
+
+        return InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () =>
+              ref.read(selectedDateProvider.notifier).selectDate(date),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: Column(
+              children: [
+                Text(
+                  _dayLetters[date.weekday - 1],
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight:
+                        isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? colors.emerald : colors.mutedText,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: cellColor,
+                    borderRadius: BorderRadius.circular(7),
+                    border: isSelected
+                        ? Border.all(color: colors.emerald, width: 2)
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Color _colorForScore(double score, AwradColors colors) {
+    if (score <= 0) return colors.heatmapLevels[0];
+    if (score < 0.4) return colors.heatmapLevels[1];
+    if (score < 0.75) return colors.heatmapLevels[2];
     return colors.heatmapLevels[3];
   }
 }

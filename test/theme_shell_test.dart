@@ -51,7 +51,8 @@ void main() {
     expect(prefs.getString('app_settings_v1'), contains('"themeMode":"dark"'));
   });
 
-  testWidgets('DateSwitcherBar steps dates and shows Today pill', (tester) async {
+  testWidgets('DateSwitcherBar steps dates and TodayCalendarButton returns to today',
+      (tester) async {
     await tester.pumpWidget(const ProviderScope(child: OradApp()));
     await tester.pumpAndSettle();
 
@@ -59,7 +60,8 @@ void main() {
     final yesterday = DateTime(today.year, today.month, today.day - 1);
 
     expect(find.text(formatFriendlyDate(today, now: today)), findsOneWidget);
-    expect(find.text('Today'), findsNothing);
+    expect(find.byTooltip('Go to today'), findsOneWidget);
+    expect(find.text('${today.day}'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Previous day').first);
     await tester.pumpAndSettle();
@@ -68,12 +70,10 @@ void main() {
       find.text(formatFriendlyDate(yesterday, now: today)),
       findsOneWidget,
     );
-    expect(find.text('Today'), findsOneWidget);
 
-    await tester.tap(find.text('Today'));
+    await tester.tap(find.byTooltip('Go to today'));
     await tester.pumpAndSettle();
 
     expect(find.text(formatFriendlyDate(today, now: today)), findsOneWidget);
-    expect(find.text('Today'), findsNothing);
   });
 }
