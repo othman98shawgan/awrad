@@ -10,3 +10,11 @@ When preparing a Pull Request reminder, always format the PR Description inside 
 - On Windows, Flutter/Dart CLI tools (`flutter analyze`, `flutter test`, `flutter gen-l10n`, etc.) hang silently with empty background logs when run inside the restricted terminal sandbox (`BypassSandbox: false`).
 - Always run those background/CLI verification commands as **standalone single commands** (do not chain multiple commands with `;` or `&&`) using **`BypassSandbox: true`** so output streams live and the command completes cleanly.
 - If you run `flutter analyze` and `flutter test`, invoke them as two separate `run_command` calls (`BypassSandbox: true`), not combined in one shell string.
+
+## Roadmap
+- [x] **Task 1 (`chore/architecture-data-refactor`)**: Minimalist 3-folder (`models/` / `services/` / `ui/`) refactor, separated sync-ready `AwradTask` + `DailyAwradLog` + `DailyPrayerLog` repositories, automatic legacy migration, normalized date provider, accurate partial rak‘ahs, and unit tests.
+- [ ] **Task 2 (`feat/serene-oasis-theme-shell`)**: "Serene Oasis" Material 3 light & dark theme (`#27`, `#28`), unified 4-tab app shell (single AppBar), and shared swipeable date switcher + calendar picker (`#18`, `#20`).
+- [ ] **Task 3 (`feat/daily-awrad-crud-templates`)**: Redesigned Daily Awrad screen (segmented progress card, 7-day strip, tri-state half-done cards, drag reorder `#24`, task notes `#25`), add/edit/delete + recurrence (`#7`–`#11`), and Import Awrad Templates (`#12`).
+- [ ] **Task 4 (`feat/prayer-tracker-redesign`)**: Redesigned Prayer Tracker tab with daily status card and tri-state prayer cards.
+- [ ] **Task 5 (`feat/progress-heatmap-teacher-report`)**: Progress tab with GitHub-style heatmap (`#14`–`#17`), weekly/monthly toggle, tap-day view, and shareable Teacher Report.
+- [ ] **Task 6 (`feat/settings-and-reminders`)**: Settings tab with template browser entry, manage awrad, wakelock toggle, daily notification reminders (`#29`–`#32`), and Guest/Cloud Sync prep.

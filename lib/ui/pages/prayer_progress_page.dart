@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/awrad_status.dart';
+import '../../services/date_utils.dart';
 import '../../services/prayer_provider.dart';
 import '../../services/selected_date_provider.dart';
 
 class PrayerProgressPage extends ConsumerStatefulWidget {
-  const PrayerProgressPage({Key? key}) : super(key: key);
+  const PrayerProgressPage({super.key});
 
   static const int initialPage = 10000;
 
@@ -30,15 +32,11 @@ class _PrayerProgressPageState extends ConsumerState<PrayerProgressPage> {
 
   @override
   Widget build(BuildContext context) {
-    final today = DateTime.now();
+    final today = normalizeDate(DateTime.now());
     final date = ref.watch(selectedDateProvider);
 
-    final offset = date.difference(DateTime(today.year, today.month, today.day)).inDays;
-    final targetPage = PrayerProgressPage.initialPage + offset;
-
-    ref.listen<DateTime>(selectedDateProvider, (previous, next) {
-      final today = DateTime.now();
-      final offset = next.difference(DateTime(today.year, today.month, today.day)).inDays;
+    ref.listen<DateTime>(selectedDateProvider, (_, next) {
+      final offset = normalizeDate(next).difference(today).inDays;
       final targetPage = PrayerProgressPage.initialPage + offset;
 
       if (_controller.hasClients && _controller.page?.round() != targetPage) {
@@ -62,7 +60,7 @@ class _PrayerProgressPageState extends ConsumerState<PrayerProgressPage> {
               },
             ),
             Text(
-              "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}",
+              formatDateKey(date),
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             IconButton(
@@ -82,24 +80,24 @@ class _PrayerProgressPageState extends ConsumerState<PrayerProgressPage> {
         physics: const ClampingScrollPhysics(),
         onPageChanged: (pageIndex) {
           final offset = pageIndex - PrayerProgressPage.initialPage;
-          final newDate = DateTime(today.year, today.month, today.day).add(Duration(days: offset));
-          ref.read(selectedDateProvider.notifier).state = newDate;
+          final newDate = DateTime(today.year, today.month, today.day + offset);
+          ref.read(selectedDateProvider.notifier).selectDate(newDate);
         },
         itemBuilder: (context, pageIndex) {
           final offset = pageIndex - PrayerProgressPage.initialPage;
-          final pageDate = DateTime(today.year, today.month, today.day).add(Duration(days: offset));
+          final pageDate = DateTime(today.year, today.month, today.day + offset);
 
           final prayers = ref.watch(prayerListProvider(pageDate));
           final notifier = ref.read(prayerListProvider(pageDate).notifier);
 
           final totalPrayers = prayers.length;
-          final completedPrayers = prayers.where((p) => p.done == true).length;
+          final completedPrayers =
+              prayers.where((p) => p.status == AwradStatus.done).length;
           final masjidPrayers = prayers.where((p) => p.inMasjid).length;
-          final totalRakahs = prayers.fold<int>(0, (sum, p) => sum + p.fard + p.beforeSunnah + p.sunnah + p.witr);
-          final completedRakahs = prayers.fold<int>(0, (sum, p) {
-            if (p.done == true) return sum + p.fard + p.beforeSunnah + p.sunnah + p.witr;
-            return sum;
-          });
+          final totalRakahs =
+              prayers.fold<int>(0, (sum, p) => sum + p.totalRakahs);
+          final completedRakahs =
+              prayers.fold<int>(0, (sum, p) => sum + p.completedRakahs);
 
           return Padding(
             padding: const EdgeInsets.all(16),
@@ -116,13 +114,19 @@ class _PrayerProgressPageState extends ConsumerState<PrayerProgressPage> {
                           tristate: true,
                           value: p.done,
                           onChanged: (v) => notifier.toggleMain(i, v),
-                          activeColor: Colors.green,
+                          activeColor: p.status == AwradStatus.halfDone
+                              ? Colors.amber[700]
+                              : Colors.green,
                         ),
                         title: Text(
                           p.name,
                           style: TextStyle(
-                            decoration: p.done == true ? TextDecoration.lineThrough : null,
-                            color: p.done == true ? Colors.grey : null,
+                            decoration: p.status == AwradStatus.done
+                                ? TextDecoration.lineThrough
+                                : null,
+                            color: p.status == AwradStatus.done
+                                ? Colors.grey
+                                : null,
                           ),
                         ),
                         children: [
@@ -133,9 +137,11 @@ class _PrayerProgressPageState extends ConsumerState<PrayerProgressPage> {
                                 CheckboxListTile(
                                   title: const Text('In Masjid'),
                                   value: p.inMasjid,
-                                  onChanged: (v) => notifier.toggleInMasjid(i, v!),
+                                  onChanged: (v) =>
+                                      notifier.toggleInMasjid(i, v!),
                                   activeColor: Colors.green,
-                                  controlAffinity: ListTileControlAffinity.leading,
+                                  controlAffinity:
+                                      ListTileControlAffinity.leading,
                                   contentPadding: EdgeInsets.zero,
                                 ),
                                 CheckboxListTile(
@@ -143,33 +149,42 @@ class _PrayerProgressPageState extends ConsumerState<PrayerProgressPage> {
                                   value: p.fardDone,
                                   onChanged: (v) => notifier.toggleFard(i, v!),
                                   activeColor: Colors.green,
-                                  controlAffinity: ListTileControlAffinity.leading,
+                                  controlAffinity:
+                                      ListTileControlAffinity.leading,
                                   contentPadding: EdgeInsets.zero,
                                 ),
                                 if (p.beforeSunnah > 0)
                                   CheckboxListTile(
-                                    title: Text('Before Sunnah (${p.beforeSunnah} rak‘ahs)'),
+                                    title: Text(
+                                      'Before Sunnah (${p.beforeSunnah} rak‘ahs)',
+                                    ),
                                     value: p.beforeSunnahDone,
-                                    onChanged: (v) => notifier.toggleBeforeSunnah(i, v!),
+                                    onChanged: (v) =>
+                                        notifier.toggleBeforeSunnah(i, v!),
                                     activeColor: Colors.green,
-                                    controlAffinity: ListTileControlAffinity.leading,
+                                    controlAffinity:
+                                        ListTileControlAffinity.leading,
                                     contentPadding: EdgeInsets.zero,
                                   ),
                                 CheckboxListTile(
                                   title: Text('Sunnah (${p.sunnah} rak‘ahs)'),
                                   value: p.sunnahDone,
-                                  onChanged: (v) => notifier.toggleSunnah(i, v!),
+                                  onChanged: (v) =>
+                                      notifier.toggleSunnah(i, v!),
                                   activeColor: Colors.green,
-                                  controlAffinity: ListTileControlAffinity.leading,
+                                  controlAffinity:
+                                      ListTileControlAffinity.leading,
                                   contentPadding: EdgeInsets.zero,
                                 ),
                                 if (p.witr > 0)
                                   CheckboxListTile(
                                     title: Text('Witr (${p.witr} rak‘ahs)'),
                                     value: p.witrDone,
-                                    onChanged: (v) => notifier.toggleWitr(i, v!),
+                                    onChanged: (v) =>
+                                        notifier.toggleWitr(i, v!),
                                     activeColor: Colors.green,
-                                    controlAffinity: ListTileControlAffinity.leading,
+                                    controlAffinity:
+                                        ListTileControlAffinity.leading,
                                     contentPadding: EdgeInsets.zero,
                                   ),
                               ],
