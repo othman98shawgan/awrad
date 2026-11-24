@@ -2,6 +2,8 @@
 
 For all Git, branching, and release operations, strictly follow the rules in [./GIT_WORKFLOW.md](./GIT_WORKFLOW.md).
 
+After every PR is merged into `main`, always run `git checkout main && git pull origin main`, delete the merged local branch, and create a new branch from `main` for any follow-up fixes or new tasks (never reuse or push new commits to an already-merged branch).
+
 Always showcase and align on the complete scope, architecture, and edge cases of any feature or fix before writing any code, especially for big features.
 
 When preparing a Pull Request reminder, always format the PR Description inside a fenced markdown code block (```markdown ... ```) so it can be easily copied with one click into GitHub.
