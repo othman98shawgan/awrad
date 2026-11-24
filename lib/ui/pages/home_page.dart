@@ -5,6 +5,8 @@ import '../../models/awrad_status.dart';
 import '../../services/awrad_provider.dart';
 import '../../services/date_utils.dart';
 import '../../services/selected_date_provider.dart';
+import '../theme/app_theme.dart';
+import '../widgets/date_switcher_bar.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -21,7 +23,10 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void initState() {
     super.initState();
-    _controller = PageController(initialPage: HomePage.initialPage);
+    final today = normalizeDate(DateTime.now());
+    final selected = ref.read(selectedDateProvider);
+    final offset = selected.difference(today).inDays;
+    _controller = PageController(initialPage: HomePage.initialPage + offset);
   }
 
   @override
@@ -33,7 +38,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final today = normalizeDate(DateTime.now());
-    final date = ref.watch(selectedDateProvider);
+    final colors = context.awradColors;
 
     ref.listen<DateTime>(selectedDateProvider, (_, next) {
       final offset = normalizeDate(next).difference(today).inDays;
@@ -44,124 +49,107 @@ class _HomePageState extends ConsumerState<HomePage> {
       }
     });
 
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back_ios),
-              onPressed: () {
-                _controller.previousPage(
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeOutQuad,
-                );
-              },
-            ),
-            Text(
-              formatDateKey(date),
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            IconButton(
-              icon: const Icon(Icons.arrow_forward_ios),
-              onPressed: () {
-                _controller.nextPage(
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeOutQuad,
-                );
-              },
-            ),
-          ],
+    return Column(
+      children: [
+        DateSwitcherBar(
+          onPrevious: () {
+            _controller.previousPage(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+            );
+          },
+          onNext: () {
+            _controller.nextPage(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+            );
+          },
         ),
-      ),
-      body: PageView.builder(
-        controller: _controller,
-        physics: const ClampingScrollPhysics(),
-        onPageChanged: (pageIndex) {
-          final offset = pageIndex - HomePage.initialPage;
-          final newDate = DateTime(today.year, today.month, today.day + offset);
-          ref.read(selectedDateProvider.notifier).selectDate(newDate);
-        },
-        itemBuilder: (context, pageIndex) {
-          final offset = pageIndex - HomePage.initialPage;
-          final pageDate = DateTime(today.year, today.month, today.day + offset);
+        Expanded(
+          child: PageView.builder(
+            controller: _controller,
+            physics: const ClampingScrollPhysics(),
+            onPageChanged: (pageIndex) {
+              final offset = pageIndex - HomePage.initialPage;
+              final newDate =
+                  DateTime(today.year, today.month, today.day + offset);
+              ref.read(selectedDateProvider.notifier).selectDate(newDate);
+            },
+            itemBuilder: (context, pageIndex) {
+              final offset = pageIndex - HomePage.initialPage;
+              final pageDate =
+                  DateTime(today.year, today.month, today.day + offset);
 
-          final allTasks = ref.watch(awradTasksProvider);
-          final tasks = allTasks.where((t) => t.appliesTo(pageDate)).toList();
-          final log = ref.watch(dailyAwradLogProvider(pageDate));
-          final logNotifier = ref.read(dailyAwradLogProvider(pageDate).notifier);
+              final allTasks = ref.watch(awradTasksProvider);
+              final tasks =
+                  allTasks.where((t) => t.appliesTo(pageDate)).toList();
+              final log = ref.watch(dailyAwradLogProvider(pageDate));
+              final logNotifier =
+                  ref.read(dailyAwradLogProvider(pageDate).notifier);
 
-          final completed = tasks
-              .where((t) => log.statusFor(t.id) == AwradStatus.done)
-              .length;
-          final halfDone = tasks
-              .where((t) => log.statusFor(t.id) == AwradStatus.halfDone)
-              .length;
+              final completed = tasks
+                  .where((t) => log.statusFor(t.id) == AwradStatus.done)
+                  .length;
+              final halfDone = tasks
+                  .where((t) => log.statusFor(t.id) == AwradStatus.halfDone)
+                  .length;
 
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Expanded(
-                  child: ListView.builder(
-                    physics: const ClampingScrollPhysics(),
-                    itemCount: tasks.length,
-                    itemBuilder: (context, idx) {
-                      final task = tasks[idx];
-                      final status = log.statusFor(task.id);
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: ListView.separated(
+                        physics: const ClampingScrollPhysics(),
+                        itemCount: tasks.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (context, idx) {
+                          final task = tasks[idx];
+                          final status = log.statusFor(task.id);
 
-                      return CheckboxListTile(
-                        tristate: true,
-                        activeColor: status == AwradStatus.halfDone
-                            ? Colors.amber[700]
-                            : Colors.green,
-                        title: Text(
-                          task.title,
-                          style: TextStyle(
-                            decoration: status == AwradStatus.done
-                                ? TextDecoration.lineThrough
-                                : null,
-                            color: status == AwradStatus.done
-                                ? Colors.grey
-                                : null,
-                          ),
-                        ),
-                        value: status.toTristate(),
-                        onChanged: (_) {
-                          logNotifier.cycleTaskStatus(task.id);
+                          return Card(
+                            child: CheckboxListTile(
+                              tristate: true,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              activeColor: status == AwradStatus.halfDone
+                                  ? colors.amber
+                                  : colors.emerald,
+                              title: Text(
+                                task.title,
+                                style: TextStyle(
+                                  decoration: status == AwradStatus.done
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                  color: status == AwradStatus.done
+                                      ? colors.mutedText
+                                      : null,
+                                ),
+                              ),
+                              value: status.toTristate(),
+                              onChanged: (_) {
+                                logNotifier.cycleTaskStatus(task.id);
+                              },
+                            ),
+                          );
                         },
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  halfDone > 0
-                      ? '$completed of ${tasks.length} tasks completed ($halfDone half done)'
-                      : '$completed of ${tasks.length} tasks completed',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(
-                    7,
-                    (_) => Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(4),
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    Text(
+                      halfDone > 0
+                          ? '$completed of ${tasks.length} tasks completed · $halfDone half done'
+                          : '$completed of ${tasks.length} tasks completed',
+                      style: TextStyle(color: colors.mutedText),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
