@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../models/awrad_status.dart';
+import '../../models/prayer_item.dart';
 import '../../services/date_utils.dart';
 import '../../services/prayer_provider.dart';
 import '../../services/selected_date_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/date_switcher_bar.dart';
+import '../widgets/prayer_card.dart';
 
 class PrayerProgressPage extends ConsumerStatefulWidget {
   const PrayerProgressPage({super.key});
@@ -39,7 +40,6 @@ class _PrayerProgressPageState extends ConsumerState<PrayerProgressPage> {
   @override
   Widget build(BuildContext context) {
     final today = normalizeDate(DateTime.now());
-    final colors = context.awradColors;
 
     ref.listen<DateTime>(selectedDateProvider, (_, next) {
       final offset = normalizeDate(next).difference(today).inDays;
@@ -80,159 +80,7 @@ class _PrayerProgressPageState extends ConsumerState<PrayerProgressPage> {
               final offset = pageIndex - PrayerProgressPage.initialPage;
               final pageDate =
                   DateTime(today.year, today.month, today.day + offset);
-
-              final prayers = ref.watch(prayerListProvider(pageDate));
-              final notifier = ref.read(prayerListProvider(pageDate).notifier);
-
-              final totalPrayers = prayers.length;
-              final completedPrayers =
-                  prayers.where((p) => p.status == AwradStatus.done).length;
-              final masjidPrayers = prayers.where((p) => p.inMasjid).length;
-              final totalRakahs =
-                  prayers.fold<int>(0, (sum, p) => sum + p.totalRakahs);
-              final completedRakahs =
-                  prayers.fold<int>(0, (sum, p) => sum + p.completedRakahs);
-
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: ListView.separated(
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemCount: prayers.length,
-                        itemBuilder: (context, i) {
-                          final p = prayers[i];
-                          return Card(
-                            clipBehavior: Clip.antiAlias,
-                            child: ExpansionTile(
-                              shape: const Border(),
-                              collapsedShape: const Border(),
-                              leading: Checkbox(
-                                tristate: true,
-                                value: p.done,
-                                onChanged: (v) => notifier.toggleMain(i, v),
-                                activeColor: p.status == AwradStatus.halfDone
-                                    ? colors.amber
-                                    : colors.emerald,
-                              ),
-                              title: Text(
-                                p.name,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  decoration: p.status == AwradStatus.done
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                  color: p.status == AwradStatus.done
-                                      ? colors.mutedText
-                                      : null,
-                                ),
-                              ),
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    left: 56,
-                                    right: 16,
-                                    bottom: 8,
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      CheckboxListTile(
-                                        title: const Text('In Masjid'),
-                                        value: p.inMasjid,
-                                        onChanged: (v) =>
-                                            notifier.toggleInMasjid(i, v!),
-                                        activeColor: colors.emerald,
-                                        controlAffinity:
-                                            ListTileControlAffinity.leading,
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
-                                      CheckboxListTile(
-                                        title: Text('Fard (${p.fard} rak‘ahs)'),
-                                        value: p.fardDone,
-                                        onChanged: (v) =>
-                                            notifier.toggleFard(i, v!),
-                                        activeColor: colors.emerald,
-                                        controlAffinity:
-                                            ListTileControlAffinity.leading,
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
-                                      if (p.beforeSunnah > 0)
-                                        CheckboxListTile(
-                                          title: Text(
-                                            'Before Sunnah (${p.beforeSunnah} rak‘ahs)',
-                                          ),
-                                          value: p.beforeSunnahDone,
-                                          onChanged: (v) => notifier
-                                              .toggleBeforeSunnah(i, v!),
-                                          activeColor: colors.emerald,
-                                          controlAffinity:
-                                              ListTileControlAffinity.leading,
-                                          contentPadding: EdgeInsets.zero,
-                                        ),
-                                      CheckboxListTile(
-                                        title: Text(
-                                          'Sunnah (${p.sunnah} rak‘ahs)',
-                                        ),
-                                        value: p.sunnahDone,
-                                        onChanged: (v) =>
-                                            notifier.toggleSunnah(i, v!),
-                                        activeColor: colors.emerald,
-                                        controlAffinity:
-                                            ListTileControlAffinity.leading,
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
-                                      if (p.witr > 0)
-                                        CheckboxListTile(
-                                          title: Text(
-                                            'Witr (${p.witr} rak‘ahs)',
-                                          ),
-                                          value: p.witrDone,
-                                          onChanged: (v) =>
-                                              notifier.toggleWitr(i, v!),
-                                          activeColor: colors.emerald,
-                                          controlAffinity:
-                                              ListTileControlAffinity.leading,
-                                          contentPadding: EdgeInsets.zero,
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _StatPill(
-                              label: 'Prayers',
-                              value: '$completedPrayers/$totalPrayers',
-                            ),
-                            _StatPill(
-                              label: 'In Masjid',
-                              value: '$masjidPrayers/$totalPrayers',
-                            ),
-                            _StatPill(
-                              label: 'Rak‘ahs',
-                              value: '$completedRakahs/$totalRakahs',
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
+              return _DailyPrayerView(pageDate: pageDate);
             },
           ),
         ),
@@ -241,33 +89,211 @@ class _PrayerProgressPageState extends ConsumerState<PrayerProgressPage> {
   }
 }
 
-class _StatPill extends StatelessWidget {
-  final String label;
-  final String value;
+class _DailyPrayerView extends ConsumerWidget {
+  final DateTime pageDate;
 
-  const _StatPill({required this.label, required this.value});
+  const _DailyPrayerView({required this.pageDate});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prayers = ref.watch(prayerListProvider(pageDate));
+    final notifier = ref.read(prayerListProvider(pageDate).notifier);
+    final log = DailyPrayerLog(
+      dateKey: formatDateKey(pageDate),
+      prayers: prayers,
+    );
+
+    return ListView(
+      physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      children: [
+        _DailyPrayerStatusCard(log: log),
+        const SizedBox(height: 12),
+        for (int i = 0; i < prayers.length; i++) ...[
+          PrayerCard(
+            prayer: prayers[i],
+            onToggleAll: (mark) => notifier.toggleMain(i, mark),
+            onToggleInMasjid: (v) => notifier.toggleInMasjid(i, v),
+            onToggleFard: (v) => notifier.toggleFard(i, v),
+            onToggleBeforeSunnah: (v) => notifier.toggleBeforeSunnah(i, v),
+            onToggleSunnah: (v) => notifier.toggleSunnah(i, v),
+            onToggleWitr: (v) => notifier.toggleWitr(i, v),
+          ),
+          if (i < prayers.length - 1) const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class _DailyPrayerStatusCard extends StatelessWidget {
+  final DailyPrayerLog log;
+
+  const _DailyPrayerStatusCard({required this.log});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.awradColors;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: colors.emerald,
+    final theme = Theme.of(context);
+    final total = log.totalPrayers;
+    final done = log.completedPrayers;
+    final half = log.halfDonePrayers;
+    final percent = (log.completionScore * 100).round();
+
+    final doneFrac = total == 0 ? 0.0 : done / total;
+    final halfFrac = total == 0 ? 0.0 : half / total;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Today's Prayer Status",
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.emeraldSoft,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '$percent%',
+                    style: TextStyle(
+                      color: colors.emerald,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: SizedBox(
+                height: 8,
+                child: Row(
+                  children: [
+                    if (doneFrac > 0)
+                      Expanded(
+                        flex: (doneFrac * 1000).round(),
+                        child: Container(color: colors.emerald),
+                      ),
+                    if (halfFrac > 0)
+                      Expanded(
+                        flex: (halfFrac * 1000).round(),
+                        child: Container(color: colors.amber),
+                      ),
+                    if ((1 - doneFrac - halfFrac) > 0.001)
+                      Expanded(
+                        flex: ((1 - doneFrac - halfFrac) * 1000).round(),
+                        child: Container(color: colors.heatmapLevels[0]),
+                      ),
+                  ],
+                ),
               ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _StatTile(
+                    label: 'Prayers',
+                    value: '$done / $total',
+                    subtitle: half > 0 ? '$half partial' : null,
+                    accentColor: colors.emerald,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _StatTile(
+                    label: 'In Masjid',
+                    value: '${log.inMasjidCount} / $total',
+                    accentColor: colors.emerald,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _StatTile(
+                    label: 'Rak‘ahs',
+                    value: '${log.completedRakahs} / ${log.totalRakahs}',
+                    accentColor: colors.emerald,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: colors.mutedText,
+      ),
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final String? subtitle;
+  final Color accentColor;
+
+  const _StatTile({
+    required this.label,
+    required this.value,
+    this.subtitle,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.awradColors;
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: colors.emeraldSoft.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colors.mutedText,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: accentColor,
+            ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle!,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: colors.amberText,
               ),
-        ),
-      ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
