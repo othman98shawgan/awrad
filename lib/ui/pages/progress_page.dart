@@ -264,65 +264,91 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
           ],
         ),
         const SizedBox(height: 14),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Reports',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+        _ReportActionCard(
+          title: 'Awrad Report',
+          subtitle: 'Elapsed days in $label (${elapsedDays.length}d)',
+          icon: Icons.checklist_rounded,
+          onPressed: elapsedDays.isEmpty
+              ? null
+              : () => showAwradReportSheet(
+                    context,
+                    periodLabel: label,
+                    elapsedDays: elapsedDays,
+                    taskSummaries: taskSummaries,
+                    streakDays: streak,
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Elapsed days in $label (${elapsedDays.length}d)',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colors.mutedText,
+        ),
+        const SizedBox(height: 10),
+        _ReportActionCard(
+          title: 'Prayers Report',
+          subtitle: 'Elapsed days in $label (${elapsedDays.length}d)',
+          icon: Icons.mosque_outlined,
+          onPressed: elapsedDays.isEmpty
+              ? null
+              : () => showPrayersReportSheet(
+                    context,
+                    periodLabel: label,
+                    elapsedDays: elapsedDays,
+                    prayerSummaries: prayerSummaries,
                   ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: elapsedDays.isEmpty
-                            ? null
-                            : () => showAwradReportSheet(
-                                  context,
-                                  periodLabel: label,
-                                  elapsedDays: elapsedDays,
-                                  taskSummaries: taskSummaries,
-                                  streakDays: streak,
-                                ),
-                        icon: const Icon(Icons.checklist_rounded, size: 17),
-                        label: const Text('Awrad Report'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: elapsedDays.isEmpty
-                            ? null
-                            : () => showPrayersReportSheet(
-                                  context,
-                                  periodLabel: label,
-                                  elapsedDays: elapsedDays,
-                                  prayerSummaries: prayerSummaries,
-                                ),
-                        icon: const Icon(Icons.mosque_outlined, size: 17),
-                        label: const Text('Prayers Report'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
         ),
       ],
+    );
+  }
+}
+
+class _ReportActionCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  const _ReportActionCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.awradColors;
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colors.mutedText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            FilledButton.icon(
+              onPressed: onPressed,
+              icon: Icon(icon, size: 17),
+              label: const Text('Report'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

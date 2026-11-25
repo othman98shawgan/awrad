@@ -136,15 +136,16 @@ void main() {
     await tester.tap(find.byTooltip('This week'));
     await tester.pumpAndSettle();
 
-    // Scroll to Reports card
+    // Scroll to Reports cards
     await tester.scrollUntilVisible(
-      find.text('Awrad Report'),
+      find.text('Prayers Report'),
       200,
       scrollable: find.byType(Scrollable).last,
     );
-    await tester.ensureVisible(find.text('Awrad Report'));
+    await tester.ensureVisible(find.text('Prayers Report'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Elapsed days in'), findsOneWidget);
+    expect(find.textContaining('Elapsed days in'), findsNWidgets(2));
+    expect(find.text('Awrad Report'), findsOneWidget);
     expect(find.text('Prayers Report'), findsOneWidget);
 
     String? copiedText;
@@ -164,8 +165,8 @@ void main() {
       );
     });
 
-    // Open Awrad Report and copy
-    await tester.tap(find.text('Awrad Report'));
+    // Open Awrad Report (first 'Report' button) and copy
+    await tester.tap(find.text('Report').first);
     await tester.pumpAndSettle();
     expect(find.text('All Awrad'), findsOneWidget);
     expect(find.text('Read Quran'), findsOneWidget);
@@ -175,8 +176,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(copiedText, contains('Awrad Report —'));
 
-    // Dismiss snackbar/wait then open Prayers Report
-    await tester.tap(find.text('Prayers Report'));
+    // Open Prayers Report (second 'Report' button)
+    await tester.tap(find.text('Report').last);
     await tester.pumpAndSettle();
     expect(find.text('By Prayer'), findsOneWidget);
     expect(find.text('Fajr'), findsOneWidget);
