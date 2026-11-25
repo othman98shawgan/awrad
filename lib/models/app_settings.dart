@@ -7,6 +7,7 @@ class AppSettings {
   final bool dailyReminderEnabled;
   final int reminderHour;
   final int reminderMinute;
+  final bool developerModeEnabled;
 
   const AppSettings({
     this.themeMode = ThemeMode.system,
@@ -14,6 +15,7 @@ class AppSettings {
     this.dailyReminderEnabled = false,
     this.reminderHour = 20,
     this.reminderMinute = 30,
+    this.developerModeEnabled = false,
   });
 
   AppSettings copyWith({
@@ -22,6 +24,7 @@ class AppSettings {
     bool? dailyReminderEnabled,
     int? reminderHour,
     int? reminderMinute,
+    bool? developerModeEnabled,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -29,6 +32,7 @@ class AppSettings {
       dailyReminderEnabled: dailyReminderEnabled ?? this.dailyReminderEnabled,
       reminderHour: reminderHour ?? this.reminderHour,
       reminderMinute: reminderMinute ?? this.reminderMinute,
+      developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
     );
   }
 
@@ -38,6 +42,7 @@ class AppSettings {
         'dailyReminderEnabled': dailyReminderEnabled,
         'reminderHour': reminderHour,
         'reminderMinute': reminderMinute,
+        'developerModeEnabled': developerModeEnabled,
       };
 
   factory AppSettings.fromMap(Map<String, dynamic> map) {
@@ -52,6 +57,7 @@ class AppSettings {
       dailyReminderEnabled: (map['dailyReminderEnabled'] as bool?) ?? false,
       reminderHour: (map['reminderHour'] as num?)?.toInt() ?? 20,
       reminderMinute: (map['reminderMinute'] as num?)?.toInt() ?? 30,
+      developerModeEnabled: (map['developerModeEnabled'] as bool?) ?? false,
     );
   }
 }

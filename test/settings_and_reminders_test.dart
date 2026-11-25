@@ -53,5 +53,23 @@ void main() {
       prefs.getString('app_settings_v1'),
       contains('"dailyReminderEnabled":true'),
     );
+
+    // Keep Screen Awake is hidden until Developer Mode is unlocked (7 taps on version)
+    expect(find.text('Keep Screen Awake'), findsNothing);
+
+    final versionFinder = find.text('Awrad v1.0.0');
+    await tester.scrollUntilVisible(
+      versionFinder,
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    for (int i = 0; i < 7; i++) {
+      await tester.tap(versionFinder);
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+
+    expect(find.text('DEVELOPER'), findsOneWidget);
+    expect(find.text('Keep Screen Awake'), findsOneWidget);
   });
 }

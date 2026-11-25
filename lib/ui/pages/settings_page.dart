@@ -1,18 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../services/awrad_provider.dart';
 import '../../services/settings_provider.dart';
+import '../../services/awrad_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/manage_awrad_sheet.dart';
 import '../widgets/prayer_sunnah_sheet.dart';
 import '../widgets/template_import_sheet.dart';
 
-class SettingsPage extends ConsumerWidget {
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends ConsumerState<SettingsPage> {
+  int _versionTapCount = 0;
+
+  void _handleVersionTap(bool currentlyEnabled) {
+    if (currentlyEnabled) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Developer mode is already enabled.')),
+        );
+      return;
+    }
+
+    _versionTapCount++;
+    final remaining = 7 - _versionTapCount;
+    if (remaining <= 0) {
+      _versionTapCount = 0;
+      ref.read(settingsProvider.notifier).setDeveloperMode(true);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Developer mode enabled!')),
+        );
+    } else if (_versionTapCount >= 3) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 1),
+            content: Text(
+              'Tap $remaining more ${remaining == 1 ? 'time' : 'times'} for Developer Mode',
+            ),
+          ),
+        );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
     final taskCount = ref.watch(awradTasksProvider).length;
@@ -187,8 +228,8 @@ class SettingsPage extends ConsumerWidget {
                 title: const Text('Daily Reminder'),
                 subtitle: Text(
                   settings.dailyReminderEnabled
-                      ? 'Scheduled for $formattedReminderTime'
-                      : 'Off · Tap to enable evening reminder',
+                      ? 'Saved for $formattedReminderTime (OS notifications coming soon)'
+                      : 'Off · Tap to save a reminder time',
                 ),
                 value: settings.dailyReminderEnabled,
                 activeThumbColor: colors.emerald,
@@ -232,19 +273,54 @@ class SettingsPage extends ConsumerWidget {
                   },
                 ),
               ],
-              const Divider(),
-              SwitchListTile(
-                secondary: Icon(
-                  Icons.screen_lock_portrait_outlined,
-                  color: colors.emerald,
-                ),
-                title: const Text('Keep Screen Awake'),
-                subtitle: const Text('Prevent dimming during recitation'),
-                value: settings.keepScreenAwake,
-                activeThumbColor: colors.emerald,
-                onChanged: notifier.setKeepScreenAwake,
-              ),
             ],
+          ),
+        ),
+        if (settings.developerModeEnabled) ...[
+          const SizedBox(height: 18),
+          const _SectionHeader(title: 'DEVELOPER'),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  secondary: Icon(
+                    Icons.screen_lock_portrait_outlined,
+                    color: colors.emerald,
+                  ),
+                  title: const Text('Keep Screen Awake'),
+                  subtitle: const Text('Prevent dimming during recitation'),
+                  value: settings.keepScreenAwake,
+                  activeThumbColor: colors.emerald,
+                  onChanged: notifier.setKeepScreenAwake,
+                ),
+                const Divider(),
+                ListTile(
+                  leading: Icon(Icons.code_off_rounded, color: colors.mutedText),
+                  title: const Text('Hide Developer Mode'),
+                  onTap: () {
+                    setState(() => _versionTapCount = 0);
+                    notifier.setDeveloperMode(false);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 20),
+        Center(
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () => _handleVersionTap(settings.developerModeEnabled),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              child: Text(
+                'Awrad v1.0.0',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colors.mutedText,
+                ),
+              ),
+            ),
           ),
         ),
       ],

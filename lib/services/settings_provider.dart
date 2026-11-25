@@ -37,6 +37,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     await _save();
   }
 
+  Future<void> setDeveloperMode(bool enabled) async {
+    state = state.copyWith(developerModeEnabled: enabled);
+    await _save();
+  }
+
   Future<void> setDailyReminder({
     bool? enabled,
     int? hour,
