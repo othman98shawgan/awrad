@@ -15,6 +15,16 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: OradApp()));
     await tester.pumpAndSettle();
 
+    // Import Daily Essentials so a Wird exists to link in the reminder dropdown
+    await tester.tap(find.text('Tap here to choose from templates'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Daily Essentials'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Add'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add'));
+    await tester.pumpAndSettle();
+
     await tester.tap(
       find.descendant(
         of: find.byType(NavigationBar),
@@ -42,16 +52,16 @@ void main() {
     expect(find.text('New Reminder'), findsOneWidget);
     expect(find.text('General · All Awrad'), findsOneWidget);
 
-    // Pick "Read Quran" from the dropdown
+    // Pick "Quran" from the dropdown
     await tester.tap(find.text('General · All Awrad'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Read Quran').last);
+    await tester.tap(find.text('Quran').last);
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Add Reminder'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Read Quran'), findsOneWidget);
+    expect(find.text('Quran'), findsOneWidget);
     expect(find.byTooltip('Delete reminder'), findsOneWidget);
 
     // Dismiss modal

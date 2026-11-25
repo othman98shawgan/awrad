@@ -198,29 +198,54 @@ class _DailyAwradPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'No Awrad scheduled for this day',
+                    allTasks.isEmpty
+                        ? 'Your Awrad list is empty'
+                        : 'No Awrad scheduled for this day',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                   ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.center,
-                    children: [
-                      FilledButton.icon(
-                        onPressed: () => showAwradTaskSheet(context),
-                        icon: const Icon(Icons.add_rounded, size: 18),
-                        label: const Text('New Wird'),
+                  const SizedBox(height: 8),
+                  if (allTasks.isEmpty) ...[
+                    TextButton(
+                      onPressed: () => showTemplateImportSheet(context),
+                      child: Text(
+                        'Tap here to choose from templates',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: colors.emerald,
+                              fontWeight: FontWeight.w600,
+                              decoration: TextDecoration.underline,
+                              decorationColor: colors.emerald,
+                            ),
                       ),
-                      OutlinedButton.icon(
-                        onPressed: () => showTemplateImportSheet(context),
-                        icon: const Icon(Icons.playlist_add, size: 18),
-                        label: const Text('Import Templates'),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: () => showAwradTaskSheet(context),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('New Wird'),
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        FilledButton.icon(
+                          onPressed: () => showAwradTaskSheet(context),
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: const Text('New Wird'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () => showTemplateImportSheet(context),
+                          icon: const Icon(Icons.playlist_add, size: 18),
+                          label: const Text('Import Templates'),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

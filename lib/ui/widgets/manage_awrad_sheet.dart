@@ -86,71 +86,90 @@ class _ManageAwradSheet extends ConsumerWidget {
               ),
             ),
             Expanded(
-              child: tasks.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No Awrad tasks yet.',
-                        style: TextStyle(color: colors.mutedText),
-                      ),
-                    )
-                  : CustomScrollView(
-                      controller: scrollController,
-                      slivers: [
-                        SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                          sliver: SliverReorderableList(
-                            itemCount: tasks.length,
-                            onReorderItem: (oldIndex, newIndex) {
-                              final adjusted =
-                                  newIndex > oldIndex ? newIndex + 1 : newIndex;
+              child: CustomScrollView(
+                controller: scrollController,
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    sliver: SliverReorderableList(
+                      itemCount: tasks.length,
+                      onReorderItem: (oldIndex, newIndex) {
+                        final adjusted =
+                            newIndex > oldIndex ? newIndex + 1 : newIndex;
+                        ref
+                            .read(awradTasksProvider.notifier)
+                            .reorderTasks(oldIndex, adjusted);
+                      },
+                      itemBuilder: (context, index) {
+                        final task = tasks[index];
+                        return Padding(
+                          key: ValueKey(task.id),
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Dismissible(
+                            key: ValueKey('dismiss_${task.id}'),
+                            direction: DismissDirection.endToStart,
+                            background: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.errorContainer,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Icon(
+                                Icons.delete_outline_rounded,
+                                color: theme.colorScheme.onErrorContainer,
+                              ),
+                            ),
+                            onDismissed: (_) {
                               ref
                                   .read(awradTasksProvider.notifier)
-                                  .reorderTasks(oldIndex, adjusted);
+                                  .deleteTask(task.id);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Deleted "${task.title}"'),
+                                ),
+                              );
                             },
-                            itemBuilder: (context, index) {
-                              final task = tasks[index];
-                              return Padding(
-                                key: ValueKey(task.id),
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Card(
-                                  child: ListTile(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    title: Text(
-                                      task.title,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    subtitle: Text(
-                                      task.note != null && task.note!.isNotEmpty
-                                          ? '${_scheduleLabel(task)} · ${task.note}'
-                                          : _scheduleLabel(task),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: colors.mutedText,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    onTap: () => showAwradTaskSheet(
-                                      context,
-                                      task: task,
-                                    ),
-                                    trailing: ReorderableDragStartListener(
-                                      index: index,
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(6),
-                                        child: Icon(
-                                          Icons.drag_indicator_rounded,
-                                          color: colors.mutedText,
-                                        ),
-                                      ),
+                            child: Card(
+                              child: ListTile(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                title: Text(
+                                  task.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  task.note != null && task.note!.isNotEmpty
+                                      ? '${_scheduleLabel(task)} · ${task.note}'
+                                      : _scheduleLabel(task),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: colors.mutedText,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                onTap: () => showAwradTaskSheet(
+                                  context,
+                                  task: task,
+                                ),
+                                trailing: ReorderableDragStartListener(
+                                  index: index,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(6),
+                                    child: Icon(
+                                      Icons.drag_indicator_rounded,
+                                      color: colors.mutedText,
                                     ),
                                   ),
                                 ),
-                              );
+                              ),
+                            ),
+                          ),
+                        );
                             },
                           ),
                         ),

@@ -114,6 +114,16 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: OradApp()));
     await tester.pumpAndSettle();
 
+    // Import Daily Essentials so the Awrad Report has tasks to display
+    await tester.tap(find.text('Tap here to choose from templates'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Daily Essentials'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Add'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add'));
+    await tester.pumpAndSettle();
+
     await tester.tap(
       find.descendant(
         of: find.byType(NavigationBar),
@@ -169,7 +179,7 @@ void main() {
     await tester.tap(find.text('Report').first);
     await tester.pumpAndSettle();
     expect(find.text('All Awrad'), findsOneWidget);
-    expect(find.text('Read Quran'), findsOneWidget);
+    expect(find.text('Quran'), findsOneWidget);
 
     await tester.tap(find.text('Copy Awrad Report'));
     await tester.pump();

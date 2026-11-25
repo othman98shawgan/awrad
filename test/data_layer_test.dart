@@ -135,7 +135,7 @@ void main() {
       await notifier.load();
 
       final initialCount = notifier.state.length;
-      expect(initialCount, DefaultAwradTemplates.dailyEssentials.tasks.length);
+      expect(initialCount, 0);
 
       await notifier.addTask(
         title: 'Tahajjud',

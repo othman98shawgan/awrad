@@ -61,7 +61,7 @@ class _TemplateImportSheet extends ConsumerWidget {
           content: Text(
             replace
                 ? 'Replaced Awrad list with "${template.name}".'
-                : 'Merged "${template.name}" into your Awrad list.',
+                : 'Added "${template.name}" to your Awrad list.',
           ),
         ),
       );
@@ -91,7 +91,7 @@ class _TemplateImportSheet extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Choose a curated worship list to merge with or replace your current tasks.',
+              'Choose a curated worship list to add to or replace your current tasks.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colors.mutedText,
               ),
@@ -179,7 +179,7 @@ class _TemplateImportSheet extends ConsumerWidget {
                                     template,
                                     replace: false,
                                   ),
-                                  child: const Text('Merge'),
+                                  child: const Text('Add'),
                                 ),
                               ),
                             ],
