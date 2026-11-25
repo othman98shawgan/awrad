@@ -81,6 +81,30 @@ class NotificationService {
     }
   }
 
+  Future<bool> arePermissionsGranted() async {
+    if (kIsWeb) return true;
+    if (!_initialized) await init();
+    if (!_initialized) return true;
+
+    try {
+      final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (androidImpl != null) {
+        return await androidImpl.areNotificationsEnabled() ?? true;
+      }
+
+      final iosImpl = _plugin.resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin>();
+      if (iosImpl != null) {
+        final perms = await iosImpl.checkPermissions();
+        return perms?.isEnabled ?? true;
+      }
+      return true;
+    } catch (_) {
+      return true;
+    }
+  }
+
   Future<bool> requestPermissions() async {
     if (kIsWeb) return false;
     if (!_initialized) await init();

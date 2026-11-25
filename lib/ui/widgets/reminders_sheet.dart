@@ -32,6 +32,23 @@ class _RemindersSheetState extends ConsumerState<_RemindersSheet> {
   int? _editingIndex;
   TimeOfDay _draftTime = const TimeOfDay(hour: 20, minute: 30);
   String? _draftTaskId;
+  bool _hasPermission = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPermission();
+  }
+
+  Future<void> _checkPermission() async {
+    var granted = await NotificationService.instance.arePermissionsGranted();
+    if (!granted) {
+      granted = await NotificationService.instance.requestPermissions();
+    }
+    if (mounted) {
+      setState(() => _hasPermission = granted);
+    }
+  }
 
   void _openAdd() {
     setState(() {
@@ -166,6 +183,47 @@ class _RemindersSheetState extends ConsumerState<_RemindersSheet> {
             ],
           ),
         ),
+        if (!_hasPermission)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: colors.amberSoft,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.amber.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.notifications_off_outlined,
+                    size: 18,
+                    color: colors.amberText,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Notifications are disabled in system settings.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.amberText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _checkPermission,
+                    child: Text(
+                      'Enable',
+                      style: TextStyle(
+                        color: colors.amberText,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         Expanded(
           child: reminders.isEmpty
               ? Center(
@@ -293,6 +351,47 @@ class _RemindersSheetState extends ConsumerState<_RemindersSheet> {
             ],
           ),
         ),
+        if (!_hasPermission)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: colors.amberSoft,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.amber.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.notifications_off_outlined,
+                    size: 18,
+                    color: colors.amberText,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Notifications are disabled in system settings.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.amberText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _checkPermission,
+                    child: Text(
+                      'Enable',
+                      style: TextStyle(
+                        color: colors.amberText,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         Expanded(
           child: ListView(
             controller: scrollController,
@@ -319,6 +418,7 @@ class _RemindersSheetState extends ConsumerState<_RemindersSheet> {
                       style: TextStyle(
                         color: colors.emerald,
                         fontWeight: FontWeight.w700,
+                        fontSize: 14,
                       ),
                     ),
                   ),
