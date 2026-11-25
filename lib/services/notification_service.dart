@@ -91,6 +91,7 @@ class NotificationService {
           AndroidFlutterLocalNotificationsPlugin>();
       final androidGranted =
           await androidImpl?.requestNotificationsPermission();
+      await androidImpl?.requestExactAlarmsPermission();
 
       final iosImpl = _plugin.resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin>();
@@ -164,15 +165,27 @@ class NotificationService {
                 ? 'You have $remainingAwradCount Awrad remaining today. Tap to open.'
                 : 'Time for your daily Awrad.');
 
-        await _plugin.zonedSchedule(
-          id: reminderIdBase + i,
-          title: 'Daily Awrad Reminder',
-          body: body,
-          scheduledDate: scheduled,
-          notificationDetails: _buildDetails(),
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-          matchDateTimeComponents: DateTimeComponents.time,
-        );
+        try {
+          await _plugin.zonedSchedule(
+            id: reminderIdBase + i,
+            title: 'Daily Awrad Reminder',
+            body: body,
+            scheduledDate: scheduled,
+            notificationDetails: _buildDetails(),
+            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            matchDateTimeComponents: DateTimeComponents.time,
+          );
+        } catch (_) {
+          await _plugin.zonedSchedule(
+            id: reminderIdBase + i,
+            title: 'Daily Awrad Reminder',
+            body: body,
+            scheduledDate: scheduled,
+            notificationDetails: _buildDetails(),
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            matchDateTimeComponents: DateTimeComponents.time,
+          );
+        }
       }
     } catch (e) {
       if (kDebugMode) {
