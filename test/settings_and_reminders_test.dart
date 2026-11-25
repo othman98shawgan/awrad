@@ -48,12 +48,7 @@ void main() {
     await tester.tap(find.text('Read Quran').last);
     await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.text('Add'),
-      ),
-    );
+    await tester.tap(find.text('Add Reminder'));
     await tester.pumpAndSettle();
 
     expect(find.text('Read Quran'), findsOneWidget);
