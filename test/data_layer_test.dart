@@ -202,7 +202,7 @@ void main() {
         themeMode: ThemeMode.dark,
         keepScreenAwake: true,
         reminders: [
-          ReminderTime(hour: 5, minute: 30, note: 'Morning Adhkar'),
+          ReminderTime(hour: 5, minute: 30, taskId: 'task_quran'),
           ReminderTime(hour: 21, minute: 15, enabled: false),
         ],
       );
@@ -212,7 +212,7 @@ void main() {
       expect(restored.reminders.length, 2);
       expect(restored.reminders[0].hour, 5);
       expect(restored.reminders[0].minute, 30);
-      expect(restored.reminders[0].note, 'Morning Adhkar');
+      expect(restored.reminders[0].taskId, 'task_quran');
       expect(restored.reminders[1].enabled, isFalse);
     });
   });

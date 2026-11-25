@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/app_settings.dart';
+import '../../models/awrad_task.dart';
+import '../../services/awrad_provider.dart';
 import '../../services/notification_service.dart';
 import '../../services/settings_provider.dart';
 import '../theme/app_theme.dart';
 
-/// Opens a modal bottom sheet to view, add, edit (time + note), toggle, and
-/// delete scheduled daily Awrad reminders.
+/// Opens a modal bottom sheet to view, add, edit (time + General or specific Wird),
+/// toggle, and delete scheduled daily Awrad reminders.
 Future<void> showRemindersSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
@@ -23,17 +25,19 @@ class _RemindersSheet extends ConsumerWidget {
 
   Future<void> _openEditor(
     BuildContext context,
-    WidgetRef ref, {
+    WidgetRef ref,
+    List<AwradTask> tasks, {
     int? index,
     ReminderTime? existing,
   }) async {
-    final result = await showDialog<({TimeOfDay time, String note})>(
+    final result = await showDialog<({TimeOfDay time, String? taskId})>(
       context: context,
       builder: (_) => _ReminderEditorDialog(
+        tasks: tasks,
         initialTime: existing != null
             ? TimeOfDay(hour: existing.hour, minute: existing.minute)
             : const TimeOfDay(hour: 20, minute: 30),
-        initialNote: existing?.note ?? '',
+        initialTaskId: existing?.taskId,
         isEditing: existing != null,
       ),
     );
@@ -44,10 +48,11 @@ class _RemindersSheet extends ConsumerWidget {
       await notifier.updateReminder(
         index,
         time: result.time,
-        note: result.note,
+        taskId: result.taskId,
+        clearTaskId: result.taskId == null,
       );
     } else {
-      await notifier.addReminder(result.time, note: result.note);
+      await notifier.addReminder(result.time, taskId: result.taskId);
       await NotificationService.instance.requestPermissions();
     }
   }
@@ -57,6 +62,8 @@ class _RemindersSheet extends ConsumerWidget {
     final colors = context.awradColors;
     final theme = Theme.of(context);
     final reminders = ref.watch(settingsProvider.select((s) => s.reminders));
+    final tasks = ref.watch(awradTasksProvider);
+    final taskTitleById = {for (final t in tasks) t.id: t.title};
     final notifier = ref.read(settingsProvider.notifier);
 
     return DraggableScrollableSheet(
@@ -83,7 +90,7 @@ class _RemindersSheet extends ConsumerWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Auto-cancels for today once all Awrad are done',
+                          'Auto-cancels for today once completed',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colors.mutedText,
                           ),
@@ -102,7 +109,7 @@ class _RemindersSheet extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    onPressed: () => _openEditor(context, ref),
+                    onPressed: () => _openEditor(context, ref, tasks),
                     icon: const Icon(Icons.add_rounded, size: 18),
                     label: const Text('Add'),
                   ),
@@ -141,6 +148,11 @@ class _RemindersSheet extends ConsumerWidget {
                           hour: r.hour,
                           minute: r.minute,
                         ).format(context);
+                        final linkedTitle = r.taskId != null
+                            ? taskTitleById[r.taskId!]
+                            : null;
+                        final targetLabel = linkedTitle ?? 'General · All Awrad';
+
                         return Card(
                           child: ListTile(
                             shape: RoundedRectangleBorder(
@@ -157,20 +169,24 @@ class _RemindersSheet extends ConsumerWidget {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            subtitle: r.note != null && r.note!.isNotEmpty
-                                ? Text(
-                                    r.note!,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: colors.mutedText,
-                                      fontSize: 12,
-                                    ),
-                                  )
-                                : null,
+                            subtitle: Text(
+                              targetLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: linkedTitle != null
+                                    ? colors.emerald
+                                    : colors.mutedText,
+                                fontSize: 12,
+                                fontWeight: linkedTitle != null
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                              ),
+                            ),
                             onTap: () => _openEditor(
                               context,
                               ref,
+                              tasks,
                               index: i,
                               existing: r,
                             ),
@@ -212,13 +228,15 @@ class _RemindersSheet extends ConsumerWidget {
 }
 
 class _ReminderEditorDialog extends StatefulWidget {
+  final List<AwradTask> tasks;
   final TimeOfDay initialTime;
-  final String initialNote;
+  final String? initialTaskId;
   final bool isEditing;
 
   const _ReminderEditorDialog({
+    required this.tasks,
     required this.initialTime,
-    required this.initialNote,
+    required this.initialTaskId,
     required this.isEditing,
   });
 
@@ -228,19 +246,15 @@ class _ReminderEditorDialog extends StatefulWidget {
 
 class _ReminderEditorDialogState extends State<_ReminderEditorDialog> {
   late TimeOfDay _time;
-  late final TextEditingController _noteController;
+  String? _selectedTaskId;
 
   @override
   void initState() {
     super.initState();
     _time = widget.initialTime;
-    _noteController = TextEditingController(text: widget.initialNote);
-  }
-
-  @override
-  void dispose() {
-    _noteController.dispose();
-    super.dispose();
+    final validIds = widget.tasks.map((t) => t.id).toSet();
+    _selectedTaskId =
+        validIds.contains(widget.initialTaskId) ? widget.initialTaskId : null;
   }
 
   @override
@@ -280,13 +294,27 @@ class _ReminderEditorDialogState extends State<_ReminderEditorDialog> {
             },
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: _noteController,
-            textCapitalization: TextCapitalization.sentences,
+          DropdownButtonFormField<String?>(
+            initialValue: _selectedTaskId,
+            isExpanded: true,
             decoration: const InputDecoration(
-              labelText: 'Note (optional)',
-              hintText: 'e.g., Morning Adhkar or Quran Wird',
+              labelText: 'Remind for',
             ),
+            items: [
+              const DropdownMenuItem<String?>(
+                value: null,
+                child: Text('General · All Awrad'),
+              ),
+              for (final task in widget.tasks)
+                DropdownMenuItem<String?>(
+                  value: task.id,
+                  child: Text(
+                    task.title,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+            onChanged: (val) => setState(() => _selectedTaskId = val),
           ),
         ],
       ),
@@ -297,7 +325,7 @@ class _ReminderEditorDialogState extends State<_ReminderEditorDialog> {
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(
-            (time: _time, note: _noteController.text),
+            (time: _time, taskId: _selectedTaskId),
           ),
           child: Text(widget.isEditing ? 'Save' : 'Add'),
         ),

@@ -42,15 +42,14 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     await _save();
   }
 
-  Future<void> addReminder(TimeOfDay time, {String? note}) async {
-    final cleaned = note?.trim();
+  Future<void> addReminder(TimeOfDay time, {String? taskId}) async {
     final updated = [
       ...state.reminders,
       ReminderTime(
         hour: time.hour,
         minute: time.minute,
         enabled: true,
-        note: (cleaned == null || cleaned.isEmpty) ? null : cleaned,
+        taskId: taskId,
       ),
     ];
     state = state.copyWith(reminders: updated);
@@ -70,19 +69,18 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   Future<void> updateReminder(
     int index, {
     TimeOfDay? time,
-    String? note,
-    bool clearNote = false,
+    String? taskId,
+    bool clearTaskId = false,
   }) async {
     if (index < 0 || index >= state.reminders.length) return;
-    final cleaned = note?.trim();
     final updated = [
       for (int i = 0; i < state.reminders.length; i++)
         if (i == index)
           state.reminders[i].copyWith(
             hour: time?.hour,
             minute: time?.minute,
-            note: (cleaned == null || cleaned.isEmpty) ? null : cleaned,
-            clearNote: clearNote || (note != null && cleaned!.isEmpty),
+            taskId: taskId,
+            clearTaskId: clearTaskId,
           )
         else
           state.reminders[i],

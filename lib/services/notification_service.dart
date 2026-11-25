@@ -123,11 +123,13 @@ class NotificationService {
   }
 
   /// Syncs all configured [reminders] with the OS scheduler.
-  /// When all today's Awrad are complete (`0` left), today's reminders are
-  /// skipped and scheduled for tomorrow instead.
+  /// - General reminders (`taskId == null`) skip today when all Awrad are done.
+  /// - Wird-specific reminders skip today as soon as that specific Wird is done.
   Future<void> syncReminders({
     required List<ReminderTime> reminders,
     required int remainingAwradCount,
+    Map<String, String> taskTitlesById = const {},
+    Set<String> doneTaskIds = const {},
   }) async {
     if (kIsWeb || !_initialized) return;
 
@@ -140,18 +142,24 @@ class NotificationService {
         final reminder = reminders[i];
         if (!reminder.enabled) continue;
 
+        final linkedTitle = reminder.taskId != null
+            ? taskTitlesById[reminder.taskId!]
+            : null;
+        final isSpecificWird = reminder.taskId != null && linkedTitle != null;
+
+        final skipToday = isSpecificWird
+            ? doneTaskIds.contains(reminder.taskId)
+            : remainingAwradCount == 0;
+
         final scheduled = computeNextTrigger(
           location: tz.local,
           hour: reminder.hour,
           minute: reminder.minute,
-          skipToday: remainingAwradCount == 0,
+          skipToday: skipToday,
         );
 
-        final hasNote = reminder.note != null && reminder.note!.isNotEmpty;
-        final body = hasNote
-            ? (remainingAwradCount > 0
-                ? '${reminder.note} · $remainingAwradCount Awrad remaining'
-                : reminder.note!)
+        final body = isSpecificWird
+            ? 'Time for: $linkedTitle'
             : (remainingAwradCount > 0
                 ? 'You have $remainingAwradCount Awrad remaining today. Tap to open.'
                 : 'Time for your daily Awrad.');

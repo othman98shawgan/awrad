@@ -1,31 +1,32 @@
 import 'package:flutter/material.dart';
 
-/// A single daily reminder entry with an on/off toggle, time of day, and optional note.
+/// A single daily reminder entry with an on/off toggle, time of day, and
+/// optional linked Awrad [taskId] (`null` means a general reminder).
 class ReminderTime {
   final int hour;
   final int minute;
   final bool enabled;
-  final String? note;
+  final String? taskId;
 
   const ReminderTime({
     required this.hour,
     required this.minute,
     this.enabled = true,
-    this.note,
+    this.taskId,
   });
 
   ReminderTime copyWith({
     int? hour,
     int? minute,
     bool? enabled,
-    String? note,
-    bool clearNote = false,
+    String? taskId,
+    bool clearTaskId = false,
   }) {
     return ReminderTime(
       hour: hour ?? this.hour,
       minute: minute ?? this.minute,
       enabled: enabled ?? this.enabled,
-      note: clearNote ? null : (note ?? this.note),
+      taskId: clearTaskId ? null : (taskId ?? this.taskId),
     );
   }
 
@@ -33,7 +34,7 @@ class ReminderTime {
         'hour': hour,
         'minute': minute,
         'enabled': enabled,
-        if (note != null && note!.isNotEmpty) 'note': note,
+        if (taskId != null && taskId!.isNotEmpty) 'taskId': taskId,
       };
 
   factory ReminderTime.fromMap(Map<String, dynamic> map) {
@@ -41,7 +42,7 @@ class ReminderTime {
       hour: (map['hour'] as num?)?.toInt() ?? 20,
       minute: (map['minute'] as num?)?.toInt() ?? 30,
       enabled: (map['enabled'] as bool?) ?? true,
-      note: map['note'] as String?,
+      taskId: map['taskId'] as String?,
     );
   }
 }

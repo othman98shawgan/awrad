@@ -10,7 +10,7 @@ void main() {
   });
 
   testWidgets(
-      'Settings opens Scheduled Reminders modal with notes and unlocks Developer Mode',
+      'Settings opens Scheduled Reminders modal (General or specific Wird) and unlocks Developer Mode',
       (tester) async {
     await tester.pumpWidget(const ProviderScope(child: OradApp()));
     await tester.pumpAndSettle();
@@ -26,7 +26,7 @@ void main() {
     expect(find.text('Guest Mode'), findsOneWidget);
     expect(find.text('Manage Awrad Tasks'), findsOneWidget);
 
-    // Open Scheduled Reminders modal and add a reminder with a note
+    // Open Scheduled Reminders modal and add a reminder linked to a specific Wird
     await tester.scrollUntilVisible(
       find.text('Scheduled Reminders'),
       200,
@@ -40,7 +40,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('New Reminder'), findsOneWidget);
-    await tester.enterText(find.byType(TextField), 'Evening Adhkar');
+    expect(find.text('General · All Awrad'), findsOneWidget);
+
+    // Pick "Read Quran" from the dropdown
+    await tester.tap(find.text('General · All Awrad'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Read Quran').last);
+    await tester.pumpAndSettle();
+
     await tester.tap(
       find.descendant(
         of: find.byType(AlertDialog),
@@ -49,7 +56,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Evening Adhkar'), findsOneWidget);
+    expect(find.text('Read Quran'), findsOneWidget);
     expect(find.byTooltip('Delete reminder'), findsOneWidget);
 
     // Dismiss modal

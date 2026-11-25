@@ -39,14 +39,22 @@ class _OradAppState extends ConsumerState<OradApp> {
   void _syncReminder() {
     final today = normalizeDate(DateTime.now());
     final settings = ref.read(settingsProvider);
-    final tasks = ref.read(awradTasksProvider).where((t) => t.appliesTo(today));
+    final allTasks = ref.read(awradTasksProvider);
+    final tasksToday = allTasks.where((t) => t.appliesTo(today)).toList();
     final log = ref.read(dailyAwradLogProvider(today));
-    final remaining = tasks
+    final remaining = tasksToday
         .where((t) => log.statusFor(t.id) != AwradStatus.done)
         .length;
+    final titlesById = {for (final t in allTasks) t.id: t.title};
+    final doneIds = tasksToday
+        .where((t) => log.statusFor(t.id) == AwradStatus.done)
+        .map((t) => t.id)
+        .toSet();
     NotificationService.instance.syncReminders(
       reminders: settings.reminders,
       remainingAwradCount: remaining,
+      taskTitlesById: titlesById,
+      doneTaskIds: doneIds,
     );
   }
 
