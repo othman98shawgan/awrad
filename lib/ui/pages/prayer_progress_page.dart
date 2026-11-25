@@ -69,7 +69,7 @@ class _PrayerProgressPageState extends ConsumerState<PrayerProgressPage> {
         Expanded(
           child: PageView.builder(
             controller: _controller,
-            physics: const ClampingScrollPhysics(),
+            allowImplicitScrolling: true,
             onPageChanged: (pageIndex) {
               final offset = pageIndex - PrayerProgressPage.initialPage;
               final newDate =
@@ -80,7 +80,9 @@ class _PrayerProgressPageState extends ConsumerState<PrayerProgressPage> {
               final offset = pageIndex - PrayerProgressPage.initialPage;
               final pageDate =
                   DateTime(today.year, today.month, today.day + offset);
-              return _DailyPrayerView(pageDate: pageDate);
+              return RepaintBoundary(
+                child: _DailyPrayerView(pageDate: pageDate),
+              );
             },
           ),
         ),

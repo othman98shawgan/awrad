@@ -147,8 +147,12 @@ class DailyAwradLogNotifier extends StateNotifier<DailyAwradLog> {
     this.date, {
     void Function()? onMutated,
   })  : _onMutated = onMutated,
-        super(DailyAwradLog(dateKey: formatDateKey(date))) {
-    _load();
+        super(
+          _repo.getCachedLog(date) ?? DailyAwradLog(dateKey: formatDateKey(date)),
+        ) {
+    if (_repo.getCachedLog(date) == null) {
+      _load();
+    }
   }
 
   Future<void> _load() async {

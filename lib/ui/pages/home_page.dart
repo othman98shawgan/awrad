@@ -75,7 +75,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         Expanded(
           child: PageView.builder(
             controller: _controller,
-            physics: const ClampingScrollPhysics(),
+            allowImplicitScrolling: true,
             onPageChanged: (pageIndex) {
               final offset = pageIndex - HomePage.initialPage;
               final newDate =
@@ -86,10 +86,12 @@ class _HomePageState extends ConsumerState<HomePage> {
               final offset = pageIndex - HomePage.initialPage;
               final pageDate =
                   DateTime(today.year, today.month, today.day + offset);
-              return _DailyAwradPage(
-                pageDate: pageDate,
-                filter: _filter,
-                onFilterChanged: (f) => setState(() => _filter = f),
+              return RepaintBoundary(
+                child: _DailyAwradPage(
+                  pageDate: pageDate,
+                  filter: _filter,
+                  onFilterChanged: (f) => setState(() => _filter = f),
+                ),
               );
             },
           ),
@@ -381,7 +383,7 @@ class _DailyProgressCard extends ConsumerWidget {
 
     final start = DateTime(pageDate.year, pageDate.month, pageDate.day - 6);
     final weekAsync = ref.watch(
-      progressRangeProvider(ProgressRangeQuery(start, pageDate)),
+      awradScoresRangeProvider(ProgressRangeQuery(start, pageDate)),
     );
 
     return Card(
@@ -474,22 +476,18 @@ class _DailyProgressCard extends ConsumerWidget {
     WidgetRef ref,
     AwradColors colors,
     ThemeData theme,
-    List<DailyProgressSummary>? days,
+    Map<DateTime, double>? scoresByDate,
     double currentDayScore,
   ) {
     final start = DateTime(pageDate.year, pageDate.month, pageDate.day - 6);
     final dates = datesInRange(start, pageDate);
-    final byDate = {
-      if (days != null)
-        for (final d in days) d.date: d,
-    };
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: dates.map((date) {
         final isSelected = date == pageDate;
-        final summary = byDate[date];
-        final dayScore = isSelected ? currentDayScore : (summary?.awradScore ?? 0.0);
+        final dayScore =
+            isSelected ? currentDayScore : (scoresByDate?[date] ?? 0.0);
         final cellColor = _colorForScore(dayScore, colors);
 
         return InkWell(
