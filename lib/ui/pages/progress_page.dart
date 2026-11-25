@@ -65,11 +65,12 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
       final end = DateTime(anchorDate.year, anchorDate.month + 1, 0);
       return (start, end);
     }
-    // Weekly: Monday..Sunday containing anchorDate
+    // Weekly: Sunday..Saturday containing anchorDate
+    final daysSinceSunday = anchorDate.weekday % 7;
     final start = DateTime(
       anchorDate.year,
       anchorDate.month,
-      anchorDate.day - (anchorDate.weekday - 1),
+      anchorDate.day - daysSinceSunday,
     );
     final end = DateTime(start.year, start.month, start.day + 6);
     return (start, end);
@@ -102,6 +103,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
   Widget build(BuildContext context) {
     final colors = context.awradColors;
     final theme = Theme.of(context);
+    final today = normalizeDate(DateTime.now());
     final anchorDate = ref.watch(progressAnchorDateProvider);
     final (start, end) = _currentRange(anchorDate);
     final label = _periodLabel(start, end);
@@ -125,26 +127,38 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
               ),
             )
             .toList();
+
+    // Reports and period percentages only count elapsed days (past days + today).
+    final elapsedDays = days.where((d) => !d.date.isAfter(today)).toList();
+    final elapsedEnd = end.isAfter(today) ? today : end;
+    final elapsedQuery = elapsedEnd.isBefore(start)
+        ? ProgressRangeQuery(DateTime(2000, 1, 2), DateTime(2000, 1, 1))
+        : ProgressRangeQuery(start, elapsedEnd);
+
     final taskBreakdownAsync =
-        ref.watch(awradTaskBreakdownProvider(rangeQuery));
+        ref.watch(awradTaskBreakdownProvider(elapsedQuery));
     final taskSummaries =
         taskBreakdownAsync.valueOrNull ?? const <AwradTaskSummary>[];
+    final prayerBreakdownAsync =
+        ref.watch(prayerBreakdownProvider(elapsedQuery));
+    final prayerSummaries =
+        prayerBreakdownAsync.valueOrNull ?? const <PrayerPeriodSummary>[];
 
-    final streakEnd = normalizeDate(DateTime.now());
-    final streakStart =
-        DateTime(streakEnd.year, streakEnd.month, streakEnd.day - 60);
+    final streakStart = DateTime(today.year, today.month, today.day - 60);
     final streakAsync = ref.watch(
-      progressRangeProvider(ProgressRangeQuery(streakStart, streakEnd)),
+      progressRangeProvider(ProgressRangeQuery(streakStart, today)),
     );
-    final streak = computeAwradStreak(streakAsync.valueOrNull ?? days);
+    final streak = computeAwradStreak(streakAsync.valueOrNull ?? elapsedDays);
 
-    final awradPct = days.isEmpty
+    final awradPct = elapsedDays.isEmpty
         ? 0
-        : ((days.fold<double>(0.0, (s, d) => s + d.awradScore) / days.length) *
+        : ((elapsedDays.fold<double>(0.0, (s, d) => s + d.awradScore) /
+                    elapsedDays.length) *
                 100)
             .round();
-    final totalFardPossible = days.length * 5;
-    final totalMasjid = days.fold<int>(0, (s, d) => s + d.prayersInMasjid);
+    final totalFardPossible = elapsedDays.length * 5;
+    final totalMasjid =
+        elapsedDays.fold<int>(0, (s, d) => s + d.prayersInMasjid);
     final masjidPct = totalFardPossible == 0
         ? 0
         : ((totalMasjid / totalFardPossible) * 100).round();
@@ -250,50 +264,91 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
           ],
         ),
         const SizedBox(height: 14),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Progress Report',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Share your $label summary',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colors.mutedText,
-                        ),
-                      ),
-                    ],
+        _ReportActionCard(
+          title: 'Awrad Report',
+          subtitle: 'Elapsed days in $label (${elapsedDays.length}d)',
+          icon: Icons.checklist_rounded,
+          onPressed: elapsedDays.isEmpty
+              ? null
+              : () => showAwradReportSheet(
+                    context,
+                    periodLabel: label,
+                    elapsedDays: elapsedDays,
+                    taskSummaries: taskSummaries,
+                    streakDays: streak,
                   ),
-                ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: days.isEmpty
-                      ? null
-                      : () => showProgressReportSheet(
-                            context,
-                            periodLabel: label,
-                            days: days,
-                            taskSummaries: taskSummaries,
-                            streakDays: streak,
-                          ),
-                  icon: const Icon(Icons.ios_share_rounded, size: 17),
-                  label: const Text('Report'),
-                ),
-              ],
-            ),
-          ),
+        ),
+        const SizedBox(height: 10),
+        _ReportActionCard(
+          title: 'Prayers Report',
+          subtitle: 'Elapsed days in $label (${elapsedDays.length}d)',
+          icon: Icons.mosque_outlined,
+          onPressed: elapsedDays.isEmpty
+              ? null
+              : () => showPrayersReportSheet(
+                    context,
+                    periodLabel: label,
+                    elapsedDays: elapsedDays,
+                    prayerSummaries: prayerSummaries,
+                  ),
         ),
       ],
+    );
+  }
+}
+
+class _ReportActionCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  const _ReportActionCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.awradColors;
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colors.mutedText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            FilledButton.icon(
+              onPressed: onPressed,
+              icon: Icon(icon, size: 17),
+              label: const Text('Report'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
