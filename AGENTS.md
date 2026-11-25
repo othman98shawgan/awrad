@@ -19,4 +19,4 @@ When preparing a Pull Request reminder, always format the PR Description inside 
 - [x] **Task 3 (`feat/daily-awrad-crud-templates`)**: Redesigned Daily Awrad screen (segmented progress card, 7-day strip, tri-state half-done cards, drag reorder `#24`, task notes `#25`), add/edit/delete + recurrence (`#7`–`#11`), and Import Awrad Templates (`#12`).
 - [x] **Task 4 (`feat/prayer-tracker-redesign`)**: Redesigned Prayer Tracker tab with daily status card and tri-state prayer cards.
 - [x] **Task 5 (`feat/progress-heatmap-teacher-report`)**: Progress tab with GitHub-style heatmap (`#14`–`#17`), weekly/monthly toggle, tap-day view, and shareable Teacher Report.
-- [ ] **Task 6 (`feat/settings-and-reminders`)**: Settings tab with template browser entry, manage awrad, wakelock toggle, daily notification reminders (`#29`–`#32`), and Guest/Cloud Sync prep.
+- [x] **Task 6 (`feat/settings-and-reminders`)**: Settings tab with template browser entry, manage awrad, wakelock toggle, daily notification reminders (`#29`–`#32`), and Guest/Cloud Sync prep.
