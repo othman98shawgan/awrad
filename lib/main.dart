@@ -129,8 +129,8 @@ class _AwradShellState extends ConsumerState<AwradShell> {
     );
     final isCurrentWeek = anchorSundayStart == todaySundayStart;
     final pages = [
-      const HomePage(),
-      const PrayerProgressPage(),
+      HomePage(isActive: _currentIndex == 0),
+      PrayerProgressPage(isActive: _currentIndex == 1),
       ProgressPage(onJumpToAwrad: () => setState(() => _currentIndex = 0)),
       const SettingsPage(),
     ];

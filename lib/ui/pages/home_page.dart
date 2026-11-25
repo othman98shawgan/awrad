@@ -16,7 +16,9 @@ import '../widgets/template_import_sheet.dart';
 enum _TaskFilter { all, pending, done }
 
 class HomePage extends ConsumerStatefulWidget {
-  const HomePage({super.key});
+  final bool isActive;
+
+  const HomePage({super.key, this.isActive = true});
 
   static const int initialPage = 10000;
 
@@ -35,6 +37,32 @@ class _HomePageState extends ConsumerState<HomePage> {
     final selected = ref.read(selectedDateProvider);
     final offset = selected.difference(today).inDays;
     _controller = PageController(initialPage: HomePage.initialPage + offset);
+    _prewarmAdjacentDays(selected);
+  }
+
+  @override
+  void didUpdateWidget(covariant HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.isActive && widget.isActive) {
+      _syncControllerToDate(ref.read(selectedDateProvider));
+    }
+  }
+
+  void _syncControllerToDate(DateTime date) {
+    final today = normalizeDate(DateTime.now());
+    final offset = normalizeDate(date).difference(today).inDays;
+    final targetPage = HomePage.initialPage + offset;
+    if (_controller.hasClients && _controller.page?.round() != targetPage) {
+      _controller.jumpToPage(targetPage);
+    }
+    _prewarmAdjacentDays(date);
+  }
+
+  void _prewarmAdjacentDays(DateTime center) {
+    final repo = ref.read(awradRepositoryProvider);
+    final start = DateTime(center.year, center.month, center.day - 7);
+    final end = DateTime(center.year, center.month, center.day + 1);
+    repo.loadLogsInRange(start, end);
   }
 
   @override
@@ -48,12 +76,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     final today = normalizeDate(DateTime.now());
 
     ref.listen<DateTime>(selectedDateProvider, (_, next) {
-      final offset = normalizeDate(next).difference(today).inDays;
-      final targetPage = HomePage.initialPage + offset;
-
-      if (_controller.hasClients && _controller.page?.round() != targetPage) {
-        _controller.jumpToPage(targetPage);
-      }
+      if (!widget.isActive) return;
+      _syncControllerToDate(next);
     });
 
     return Column(
@@ -61,13 +85,13 @@ class _HomePageState extends ConsumerState<HomePage> {
         DateSwitcherBar(
           onPrevious: () {
             _controller.previousPage(
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 260),
               curve: Curves.easeOutCubic,
             );
           },
           onNext: () {
             _controller.nextPage(
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 260),
               curve: Curves.easeOutCubic,
             );
           },
@@ -75,12 +99,14 @@ class _HomePageState extends ConsumerState<HomePage> {
         Expanded(
           child: PageView.builder(
             controller: _controller,
-            allowImplicitScrolling: true,
+            pageSnapping: false,
+            physics: const LightSwipePagePhysics(),
             onPageChanged: (pageIndex) {
               final offset = pageIndex - HomePage.initialPage;
               final newDate =
                   DateTime(today.year, today.month, today.day + offset);
               ref.read(selectedDateProvider.notifier).selectDate(newDate);
+              _prewarmAdjacentDays(newDate);
             },
             itemBuilder: (context, pageIndex) {
               final offset = pageIndex - HomePage.initialPage;

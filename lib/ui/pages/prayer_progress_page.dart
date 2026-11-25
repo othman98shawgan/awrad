@@ -10,7 +10,9 @@ import '../widgets/date_switcher_bar.dart';
 import '../widgets/prayer_card.dart';
 
 class PrayerProgressPage extends ConsumerStatefulWidget {
-  const PrayerProgressPage({super.key});
+  final bool isActive;
+
+  const PrayerProgressPage({super.key, this.isActive = true});
 
   static const int initialPage = 10000;
 
@@ -29,6 +31,32 @@ class _PrayerProgressPageState extends ConsumerState<PrayerProgressPage> {
     final offset = selected.difference(today).inDays;
     _controller =
         PageController(initialPage: PrayerProgressPage.initialPage + offset);
+    _prewarmAdjacentDays(selected);
+  }
+
+  @override
+  void didUpdateWidget(covariant PrayerProgressPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.isActive && widget.isActive) {
+      _syncControllerToDate(ref.read(selectedDateProvider));
+    }
+  }
+
+  void _syncControllerToDate(DateTime date) {
+    final today = normalizeDate(DateTime.now());
+    final offset = normalizeDate(date).difference(today).inDays;
+    final targetPage = PrayerProgressPage.initialPage + offset;
+    if (_controller.hasClients && _controller.page?.round() != targetPage) {
+      _controller.jumpToPage(targetPage);
+    }
+    _prewarmAdjacentDays(date);
+  }
+
+  void _prewarmAdjacentDays(DateTime center) {
+    final repo = ref.read(prayerRepositoryProvider);
+    final start = DateTime(center.year, center.month, center.day - 1);
+    final end = DateTime(center.year, center.month, center.day + 1);
+    repo.loadLogsInRange(start, end);
   }
 
   @override
@@ -42,12 +70,8 @@ class _PrayerProgressPageState extends ConsumerState<PrayerProgressPage> {
     final today = normalizeDate(DateTime.now());
 
     ref.listen<DateTime>(selectedDateProvider, (_, next) {
-      final offset = normalizeDate(next).difference(today).inDays;
-      final targetPage = PrayerProgressPage.initialPage + offset;
-
-      if (_controller.hasClients && _controller.page?.round() != targetPage) {
-        _controller.jumpToPage(targetPage);
-      }
+      if (!widget.isActive) return;
+      _syncControllerToDate(next);
     });
 
     return Column(
@@ -55,13 +79,13 @@ class _PrayerProgressPageState extends ConsumerState<PrayerProgressPage> {
         DateSwitcherBar(
           onPrevious: () {
             _controller.previousPage(
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 260),
               curve: Curves.easeOutCubic,
             );
           },
           onNext: () {
             _controller.nextPage(
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 260),
               curve: Curves.easeOutCubic,
             );
           },
@@ -69,12 +93,14 @@ class _PrayerProgressPageState extends ConsumerState<PrayerProgressPage> {
         Expanded(
           child: PageView.builder(
             controller: _controller,
-            allowImplicitScrolling: true,
+            pageSnapping: false,
+            physics: const LightSwipePagePhysics(),
             onPageChanged: (pageIndex) {
               final offset = pageIndex - PrayerProgressPage.initialPage;
               final newDate =
                   DateTime(today.year, today.month, today.day + offset);
               ref.read(selectedDateProvider.notifier).selectDate(newDate);
+              _prewarmAdjacentDays(newDate);
             },
             itemBuilder: (context, pageIndex) {
               final offset = pageIndex - PrayerProgressPage.initialPage;
