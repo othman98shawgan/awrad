@@ -33,22 +33,7 @@ class _OradAppState extends ConsumerState<OradApp> {
   @override
   void initState() {
     super.initState();
-    NotificationService.instance.init(
-      onAction: (actionId) {
-        if (actionId == NotificationService.markAllDoneActionId) {
-          _markAllTodayDone();
-        }
-      },
-    );
-  }
-
-  Future<void> _markAllTodayDone() async {
-    final today = normalizeDate(DateTime.now());
-    final tasks = ref.read(awradTasksProvider).where((t) => t.appliesTo(today));
-    final logNotifier = ref.read(dailyAwradLogProvider(today).notifier);
-    for (final task in tasks) {
-      await logNotifier.setTaskStatus(task.id, AwradStatus.done);
-    }
+    NotificationService.instance.init();
   }
 
   void _syncReminder() {
@@ -59,8 +44,8 @@ class _OradAppState extends ConsumerState<OradApp> {
     final remaining = tasks
         .where((t) => log.statusFor(t.id) != AwradStatus.done)
         .length;
-    NotificationService.instance.syncDailyReminder(
-      settings: settings,
+    NotificationService.instance.syncReminders(
+      reminders: settings.reminders,
       remainingAwradCount: remaining,
     );
   }

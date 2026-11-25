@@ -42,16 +42,45 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     await _save();
   }
 
-  Future<void> setDailyReminder({
-    bool? enabled,
-    int? hour,
-    int? minute,
-  }) async {
-    state = state.copyWith(
-      dailyReminderEnabled: enabled,
-      reminderHour: hour,
-      reminderMinute: minute,
-    );
+  Future<void> addReminder(TimeOfDay time) async {
+    final updated = [
+      ...state.reminders,
+      ReminderTime(hour: time.hour, minute: time.minute, enabled: true),
+    ];
+    state = state.copyWith(reminders: updated);
+    await _save();
+  }
+
+  Future<void> toggleReminder(int index, bool enabled) async {
+    if (index < 0 || index >= state.reminders.length) return;
+    final updated = [
+      for (int i = 0; i < state.reminders.length; i++)
+        if (i == index) state.reminders[i].copyWith(enabled: enabled) else state.reminders[i],
+    ];
+    state = state.copyWith(reminders: updated);
+    await _save();
+  }
+
+  Future<void> updateReminderTime(int index, TimeOfDay time) async {
+    if (index < 0 || index >= state.reminders.length) return;
+    final updated = [
+      for (int i = 0; i < state.reminders.length; i++)
+        if (i == index)
+          state.reminders[i].copyWith(hour: time.hour, minute: time.minute)
+        else
+          state.reminders[i],
+    ];
+    state = state.copyWith(reminders: updated);
+    await _save();
+  }
+
+  Future<void> removeReminder(int index) async {
+    if (index < 0 || index >= state.reminders.length) return;
+    final updated = [
+      for (int i = 0; i < state.reminders.length; i++)
+        if (i != index) state.reminders[i],
+    ];
+    state = state.copyWith(reminders: updated);
     await _save();
   }
 

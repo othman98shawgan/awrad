@@ -1,4 +1,5 @@
 import 'package:awrad/main.dart';
+import 'package:awrad/services/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,7 +10,8 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('Settings displays Guest Mode, Manage Awrad, and Daily Reminder',
+  testWidgets(
+      'Settings displays Guest Mode, Manage Awrad, multiple Reminders, and Developer Mode',
       (tester) async {
     await tester.pumpWidget(const ProviderScope(child: OradApp()));
     await tester.pumpAndSettle();
@@ -37,27 +39,26 @@ void main() {
     Navigator.of(tester.element(find.text('Manage Awrad'))).pop();
     await tester.pumpAndSettle();
 
-    // Scroll to Daily Reminder and toggle ON
+    // Scroll to Daily Reminders and add two reminders via settingsProvider
     await tester.scrollUntilVisible(
-      find.text('Daily Reminder'),
+      find.text('Daily Reminders'),
       200,
       scrollable: find.byType(Scrollable).last,
     );
-    await tester.tap(find.text('Daily Reminder'));
+    expect(find.text('Daily Reminders'), findsOneWidget);
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.text('Daily Reminders')),
+    );
+    await container
+        .read(settingsProvider.notifier)
+        .addReminder(const TimeOfDay(hour: 6, minute: 0));
+    await container
+        .read(settingsProvider.notifier)
+        .addReminder(const TimeOfDay(hour: 20, minute: 30));
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      find.text('Reminder Time'),
-      150,
-      scrollable: find.byType(Scrollable).last,
-    );
-    expect(find.text('Reminder Time'), findsOneWidget);
-
-    final prefs = await SharedPreferences.getInstance();
-    expect(
-      prefs.getString('app_settings_v1'),
-      contains('"dailyReminderEnabled":true'),
-    );
+    expect(find.byTooltip('Delete reminder'), findsNWidgets(2));
 
     // Keep Screen Awake is hidden until Developer Mode is unlocked (7 taps on version)
     expect(find.text('Keep Screen Awake'), findsNothing);

@@ -6,25 +6,23 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../models/app_settings.dart';
 
-/// Handles local daily Awrad reminder scheduling, quick-action responses,
-/// and auto-cancellation when all daily tasks are completed.
+/// Handles scheduling multiple daily Awrad reminders and auto-cancelling
+/// today's reminders when all daily tasks are completed.
 class NotificationService {
   NotificationService._();
 
   static final NotificationService instance = NotificationService._();
 
-  static const int dailyReminderId = 1001;
-  static const int testNotificationId = 1002;
+  static const int reminderIdBase = 1000;
+  static const int maxRemindersToClear = 50;
+  static const int testNotificationId = 1999;
   static const String channelId = 'awrad_daily_reminders';
   static const String channelName = 'Daily Awrad Reminders';
-  static const String markAllDoneActionId = 'mark_all_done';
-  static const String darwinCategoryId = 'awrad_reminder_category';
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
-  void Function(String? actionId)? _onAction;
 
   /// Pure helper for computing the next trigger timestamp.
   /// If [skipToday] is true (e.g., all today's tasks are already done),
@@ -53,8 +51,7 @@ class NotificationService {
     return scheduled;
   }
 
-  Future<void> init({void Function(String? actionId)? onAction}) async {
-    _onAction = onAction;
+  Future<void> init() async {
     if (kIsWeb || _initialized) return;
 
     try {
@@ -63,36 +60,19 @@ class NotificationService {
       tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
 
       const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-      final darwinInit = DarwinInitializationSettings(
+      const darwinInit = DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
         requestSoundPermission: false,
-        notificationCategories: [
-          DarwinNotificationCategory(
-            darwinCategoryId,
-            actions: [
-              DarwinNotificationAction.plain(
-                markAllDoneActionId,
-                'Mark All Done',
-                options: {DarwinNotificationActionOption.foreground},
-              ),
-            ],
-          ),
-        ],
       );
 
-      final initSettings = InitializationSettings(
+      const initSettings = InitializationSettings(
         android: androidInit,
         iOS: darwinInit,
         macOS: darwinInit,
       );
 
-      await _plugin.initialize(
-        settings: initSettings,
-        onDidReceiveNotificationResponse: (response) {
-          _onAction?.call(response.actionId);
-        },
-      );
+      await _plugin.initialize(settings: initSettings);
       _initialized = true;
     } catch (e) {
       if (kDebugMode) {
@@ -103,7 +83,7 @@ class NotificationService {
 
   Future<bool> requestPermissions() async {
     if (kIsWeb) return false;
-    if (!_initialized) await init(onAction: _onAction);
+    if (!_initialized) await init();
     if (!_initialized) return false;
 
     try {
@@ -130,21 +110,11 @@ class NotificationService {
     const androidDetails = AndroidNotificationDetails(
       channelId,
       channelName,
-      channelDescription: 'Daily reminder for your remaining Awrad tasks',
+      channelDescription: 'Daily reminders for your remaining Awrad tasks',
       importance: Importance.high,
       priority: Priority.high,
-      actions: [
-        AndroidNotificationAction(
-          markAllDoneActionId,
-          'Mark All Done',
-          showsUserInterface: true,
-          cancelNotification: true,
-        ),
-      ],
     );
-    const darwinDetails = DarwinNotificationDetails(
-      categoryIdentifier: darwinCategoryId,
-    );
+    const darwinDetails = DarwinNotificationDetails();
     return const NotificationDetails(
       android: androidDetails,
       iOS: darwinDetails,
@@ -152,39 +122,45 @@ class NotificationService {
     );
   }
 
-  /// Schedules or cancels the daily reminder based on [settings] and
-  /// [remainingAwradCount]. When all today's Awrad are complete (`0` left),
-  /// today's reminder is cancelled and scheduled for tomorrow instead.
-  Future<void> syncDailyReminder({
-    required AppSettings settings,
+  /// Syncs all configured [reminders] with the OS scheduler.
+  /// When all today's Awrad are complete (`0` left), today's reminders are
+  /// skipped and scheduled for tomorrow instead.
+  Future<void> syncReminders({
+    required List<ReminderTime> reminders,
     required int remainingAwradCount,
   }) async {
     if (kIsWeb || !_initialized) return;
 
     try {
-      await _plugin.cancel(id: dailyReminderId);
-      if (!settings.dailyReminderEnabled) return;
-
-      final scheduled = computeNextTrigger(
-        location: tz.local,
-        hour: settings.reminderHour,
-        minute: settings.reminderMinute,
-        skipToday: remainingAwradCount == 0,
-      );
+      for (int i = 0; i < maxRemindersToClear; i++) {
+        await _plugin.cancel(id: reminderIdBase + i);
+      }
 
       final body = remainingAwradCount > 0
-          ? 'You have $remainingAwradCount Awrad remaining today.'
+          ? 'You have $remainingAwradCount Awrad remaining today. Tap to open.'
           : 'Time for your daily Awrad.';
 
-      await _plugin.zonedSchedule(
-        id: dailyReminderId,
-        title: 'Daily Awrad Reminder',
-        body: body,
-        scheduledDate: scheduled,
-        notificationDetails: _buildDetails(),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.time,
-      );
+      for (int i = 0; i < reminders.length && i < maxRemindersToClear; i++) {
+        final reminder = reminders[i];
+        if (!reminder.enabled) continue;
+
+        final scheduled = computeNextTrigger(
+          location: tz.local,
+          hour: reminder.hour,
+          minute: reminder.minute,
+          skipToday: remainingAwradCount == 0,
+        );
+
+        await _plugin.zonedSchedule(
+          id: reminderIdBase + i,
+          title: 'Daily Awrad Reminder',
+          body: body,
+          scheduledDate: scheduled,
+          notificationDetails: _buildDetails(),
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          matchDateTimeComponents: DateTimeComponents.time,
+        );
+      }
     } catch (e) {
       if (kDebugMode) {
         print('NotificationService sync failed: $e');
@@ -194,11 +170,11 @@ class NotificationService {
 
   Future<void> sendTestNotification({required int remainingAwradCount}) async {
     if (kIsWeb) return;
-    if (!_initialized) await init(onAction: _onAction);
+    if (!_initialized) await init();
     if (!_initialized) return;
 
     final body = remainingAwradCount > 0
-        ? 'You have $remainingAwradCount Awrad remaining today.'
+        ? 'You have $remainingAwradCount Awrad remaining today. Tap to open.'
         : 'All Awrad completed for today!';
 
     await _plugin.show(

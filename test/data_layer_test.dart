@@ -197,20 +197,22 @@ void main() {
       expect(notifier.state, DateTime(2026, 11, 23));
     });
 
-    test('AppSettings serializes themeMode and wakelock preference', () {
+    test('AppSettings serializes themeMode, wakelock, and multiple reminders', () {
       const settings = AppSettings(
         themeMode: ThemeMode.dark,
         keepScreenAwake: true,
-        dailyReminderEnabled: true,
-        reminderHour: 21,
-        reminderMinute: 15,
+        reminders: [
+          ReminderTime(hour: 5, minute: 30),
+          ReminderTime(hour: 21, minute: 15, enabled: false),
+        ],
       );
       final restored = AppSettings.fromMap(settings.toMap());
       expect(restored.themeMode, ThemeMode.dark);
       expect(restored.keepScreenAwake, isTrue);
-      expect(restored.dailyReminderEnabled, isTrue);
-      expect(restored.reminderHour, 21);
-      expect(restored.reminderMinute, 15);
+      expect(restored.reminders.length, 2);
+      expect(restored.reminders[0].hour, 5);
+      expect(restored.reminders[0].minute, 30);
+      expect(restored.reminders[1].enabled, isFalse);
     });
   });
 }

@@ -63,12 +63,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final colors = context.awradColors;
     final theme = Theme.of(context);
 
-    final reminderTime = TimeOfDay(
-      hour: settings.reminderHour,
-      minute: settings.reminderMinute,
-    );
-    final formattedReminderTime = reminderTime.format(context);
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
       children: [
@@ -225,59 +219,83 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         Card(
           child: Column(
             children: [
-              SwitchListTile(
-                secondary:
+              ListTile(
+                leading:
                     Icon(Icons.notifications_outlined, color: colors.emerald),
-                title: const Text('Daily Reminder'),
+                title: const Text('Daily Reminders'),
                 subtitle: Text(
-                  settings.dailyReminderEnabled
-                      ? 'Scheduled at $formattedReminderTime · Auto-cancels when done'
-                      : 'Off · Tap to enable evening reminder',
+                  settings.reminders.isEmpty
+                      ? 'Add one or more reminder times'
+                      : 'Auto-cancels for today when all Awrad are done',
                 ),
-                value: settings.dailyReminderEnabled,
-                activeThumbColor: colors.emerald,
-                onChanged: (enabled) async {
-                  await notifier.setDailyReminder(enabled: enabled);
-                  if (enabled) {
-                    await NotificationService.instance.requestPermissions();
-                  }
-                },
+                trailing: TextButton.icon(
+                  onPressed: () async {
+                    final picked = await showTimePicker(
+                      context: context,
+                      initialTime: const TimeOfDay(hour: 20, minute: 30),
+                    );
+                    if (picked != null) {
+                      await notifier.addReminder(picked);
+                      await NotificationService.instance.requestPermissions();
+                    }
+                  },
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Add'),
+                ),
               ),
-              if (settings.dailyReminderEnabled) ...[
+              for (int i = 0; i < settings.reminders.length; i++) ...[
                 const Divider(),
                 ListTile(
-                  leading:
-                      Icon(Icons.schedule_rounded, color: colors.emerald),
-                  title: const Text('Reminder Time'),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colors.emeraldSoft,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      formattedReminderTime,
-                      style: TextStyle(
-                        color: colors.emerald,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+                  leading: Icon(
+                    Icons.schedule_rounded,
+                    color: settings.reminders[i].enabled
+                        ? colors.emerald
+                        : colors.mutedText,
+                  ),
+                  title: Text(
+                    TimeOfDay(
+                      hour: settings.reminders[i].hour,
+                      minute: settings.reminders[i].minute,
+                    ).format(context),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   onTap: () async {
                     final picked = await showTimePicker(
                       context: context,
-                      initialTime: reminderTime,
+                      initialTime: TimeOfDay(
+                        hour: settings.reminders[i].hour,
+                        minute: settings.reminders[i].minute,
+                      ),
                     );
                     if (picked != null) {
-                      await notifier.setDailyReminder(
-                        hour: picked.hour,
-                        minute: picked.minute,
-                      );
+                      await notifier.updateReminderTime(i, picked);
                     }
                   },
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Switch(
+                        value: settings.reminders[i].enabled,
+                        activeThumbColor: colors.emerald,
+                        onChanged: (val) async {
+                          await notifier.toggleReminder(i, val);
+                          if (val) {
+                            await NotificationService.instance
+                                .requestPermissions();
+                          }
+                        },
+                      ),
+                      IconButton(
+                        tooltip: 'Delete reminder',
+                        icon: Icon(
+                          Icons.delete_outline_rounded,
+                          size: 20,
+                          color: colors.mutedText,
+                        ),
+                        onPressed: () => notifier.removeReminder(i),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ],
@@ -308,7 +326,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     color: colors.emerald,
                   ),
                   title: const Text('Send Test Notification'),
-                  subtitle: const Text('Verify daily reminder & action button'),
+                  subtitle: const Text('Verify daily reminder notification'),
                   onTap: () {
                     final today = normalizeDate(DateTime.now());
                     final tasks = ref
