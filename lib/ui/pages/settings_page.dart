@@ -7,6 +7,7 @@ import '../../services/date_utils.dart';
 import '../../services/notification_service.dart';
 import '../../services/settings_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/awrad_logo.dart';
 import '../widgets/manage_awrad_sheet.dart';
 import '../widgets/prayer_sunnah_sheet.dart';
 import '../widgets/reminders_sheet.dart';
@@ -286,15 +287,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         const SizedBox(height: 20),
         Center(
           child: InkWell(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(14),
             onTap: () => _handleVersionTap(settings.developerModeEnabled),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              child: Text(
-                'Awrad v1.0.0',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colors.mutedText,
-                ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const AwradLogo(size: 48),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Awrad v1.0.0',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colors.mutedText,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
