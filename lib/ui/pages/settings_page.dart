@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../services/awrad_provider.dart';
 import '../../services/settings_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/manage_awrad_sheet.dart';
+import '../widgets/prayer_sunnah_sheet.dart';
 import '../widgets/template_import_sheet.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -12,11 +15,119 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+    final taskCount = ref.watch(awradTasksProvider).length;
     final colors = context.awradColors;
+    final theme = Theme.of(context);
+
+    final reminderTime = TimeOfDay(
+      hour: settings.reminderHour,
+      minute: settings.reminderMinute,
+    );
+    final formattedReminderTime = reminderTime.format(context);
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
       children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: colors.emeraldSoft,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.person_outline_rounded,
+                    color: colors.emerald,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Guest Mode',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colors.emeraldSoft,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'Local',
+                              style: TextStyle(
+                                color: colors.emerald,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Saved on this device · Cloud sync & accounts coming soon',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.mutedText,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+        const _SectionHeader(title: 'AWRAD & PRAYERS'),
+        const SizedBox(height: 8),
+        Card(
+          child: Column(
+            children: [
+              ListTile(
+                leading: Icon(Icons.playlist_add, color: colors.emerald),
+                title: const Text('Import Awrad Templates'),
+                subtitle: const Text('Browse curated daily & Ramadan lists'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => showTemplateImportSheet(context),
+              ),
+              const Divider(),
+              ListTile(
+                leading: Icon(Icons.checklist_rounded, color: colors.emerald),
+                title: const Text('Manage Awrad Tasks'),
+                subtitle: Text('$taskCount active · Edit, delete, or reorder'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => showManageAwradSheet(context),
+              ),
+              const Divider(),
+              ListTile(
+                leading: Icon(Icons.tune_rounded, color: colors.emerald),
+                title: const Text('Customize Sunnah Prayers'),
+                subtitle: const Text('Mu’akkadah & Mustahabbah rak‘ahs'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => showPrayerSunnahSheet(context),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        const _SectionHeader(title: 'PREFERENCES'),
+        const SizedBox(height: 8),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -29,9 +140,9 @@ class SettingsPage extends ConsumerWidget {
                     const SizedBox(width: 12),
                     Text(
                       'Theme Appearance',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -71,35 +182,94 @@ class SettingsPage extends ConsumerWidget {
           child: Column(
             children: [
               SwitchListTile(
-                secondary: Icon(Icons.screen_lock_portrait_outlined,
-                    color: colors.emerald),
+                secondary:
+                    Icon(Icons.notifications_outlined, color: colors.emerald),
+                title: const Text('Daily Reminder'),
+                subtitle: Text(
+                  settings.dailyReminderEnabled
+                      ? 'Scheduled for $formattedReminderTime'
+                      : 'Off · Tap to enable evening reminder',
+                ),
+                value: settings.dailyReminderEnabled,
+                activeThumbColor: colors.emerald,
+                onChanged: (enabled) =>
+                    notifier.setDailyReminder(enabled: enabled),
+              ),
+              if (settings.dailyReminderEnabled) ...[
+                const Divider(),
+                ListTile(
+                  leading:
+                      Icon(Icons.schedule_rounded, color: colors.emerald),
+                  title: const Text('Reminder Time'),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.emeraldSoft,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      formattedReminderTime,
+                      style: TextStyle(
+                        color: colors.emerald,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  onTap: () async {
+                    final picked = await showTimePicker(
+                      context: context,
+                      initialTime: reminderTime,
+                    );
+                    if (picked != null) {
+                      await notifier.setDailyReminder(
+                        hour: picked.hour,
+                        minute: picked.minute,
+                      );
+                    }
+                  },
+                ),
+              ],
+              const Divider(),
+              SwitchListTile(
+                secondary: Icon(
+                  Icons.screen_lock_portrait_outlined,
+                  color: colors.emerald,
+                ),
                 title: const Text('Keep Screen Awake'),
                 subtitle: const Text('Prevent dimming during recitation'),
                 value: settings.keepScreenAwake,
                 activeThumbColor: colors.emerald,
                 onChanged: notifier.setKeepScreenAwake,
               ),
-              const Divider(),
-              ListTile(
-                leading: Icon(Icons.playlist_add, color: colors.emerald),
-                title: const Text('Import Awrad Templates'),
-                subtitle: const Text('Browse curated daily & Ramadan lists'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => showTemplateImportSheet(context),
-              ),
-              const Divider(),
-              ListTile(
-                leading:
-                    Icon(Icons.notifications_outlined, color: colors.emerald),
-                title: const Text('Daily Reminders'),
-                subtitle: const Text('Coming in Task 6'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {},
-              ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+
+  const _SectionHeader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.awradColors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: colors.emerald,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+            ),
+      ),
     );
   }
 }
