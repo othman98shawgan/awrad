@@ -6,44 +6,37 @@ class DefaultAwradTemplates {
   static const dailyEssentials = AwradTemplate(
     id: 'daily_essentials',
     name: 'Daily Essentials',
-    description: 'Core daily Quran, adhkar, congregation, and spiritual habits.',
+    description: 'Core daily Quran, prayers, adhkar, and reading habits.',
     tasks: [
-      AwradTemplateTask(title: 'Read Quran', category: AwradCategory.quran),
+      AwradTemplateTask(title: 'Quran', category: AwradCategory.quran),
       AwradTemplateTask(
-        title: 'Fajr prayer in congregation',
+        title: 'Fajr prayer in Jamaa',
         category: AwradCategory.prayer,
       ),
-      AwradTemplateTask(title: 'Duha prayer', category: AwradCategory.sunnah),
-      AwradTemplateTask(title: 'Morning adhkar', category: AwradCategory.adhkar),
-      AwradTemplateTask(title: 'Evening adhkar', category: AwradCategory.adhkar),
+      AwradTemplateTask(title: 'Duha', category: AwradCategory.sunnah),
       AwradTemplateTask(
-        title: '200 times istighfar',
+        title: 'Morning Adhkar',
         category: AwradCategory.adhkar,
       ),
       AwradTemplateTask(
-        title: '200 times “La ilaha illa Allah”',
+        title: 'Evening Adhkar',
         category: AwradCategory.adhkar,
       ),
       AwradTemplateTask(
-        title: '200 blessings on the Prophet',
+        title: '100 Istighfar',
         category: AwradCategory.adhkar,
       ),
       AwradTemplateTask(
-        title: 'Fasting',
-        category: AwradCategory.fasting,
-        repeatWeekdays: {DateTime.monday, DateTime.thursday},
+        title: '100 La ilaha illa Allah',
+        category: AwradCategory.adhkar,
       ),
       AwradTemplateTask(
-        title: 'Read for half an hour',
+        title: '100 Salawat',
+        category: AwradCategory.adhkar,
+      ),
+      AwradTemplateTask(
+        title: 'Reading',
         category: AwradCategory.knowledge,
-      ),
-      AwradTemplateTask(
-        title: 'Remember the Hereafter',
-        category: AwradCategory.other,
-      ),
-      AwradTemplateTask(
-        title: 'Spiritual connection with dawah',
-        category: AwradCategory.other,
       ),
     ],
   );

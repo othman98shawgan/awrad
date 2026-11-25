@@ -41,13 +41,8 @@ class LocalAwradRepository implements AwradRepository {
       return tasks;
     }
 
-    // Seed first-time users with the Daily Essentials template (every day).
-    final seeded = buildTasksFromTemplate(
-      DefaultAwradTemplates.dailyEssentials,
-      everyDayOverride: true,
-    );
-    await saveTasks(seeded);
-    return seeded;
+    // First-time users start with an empty Awrad list so they can choose a template or add their own.
+    return const [];
   }
 
   @override
@@ -140,9 +135,20 @@ class LocalAwradRepository implements AwradRepository {
     final titleToTask = <String, AwradTask>{};
     final orderedTasks = <AwradTask>[];
 
-    // Seed title lookup with default template categories so migrated tasks inherit categories.
+    // Seed title lookup with default template categories (plus legacy titles)
+    // so migrated tasks inherit categories.
     final defaultCategoryByTitle = <String, AwradCategory>{
-      for (final t in DefaultAwradTemplates.dailyEssentials.tasks) t.title: t.category,
+      'Read Quran': AwradCategory.quran,
+      'Fajr prayer in congregation': AwradCategory.prayer,
+      'Duha prayer': AwradCategory.sunnah,
+      'Morning adhkar': AwradCategory.adhkar,
+      'Evening adhkar': AwradCategory.adhkar,
+      '200 times istighfar': AwradCategory.adhkar,
+      '200 times “La ilaha illa Allah”': AwradCategory.adhkar,
+      '200 blessings on the Prophet': AwradCategory.adhkar,
+      'Read for half an hour': AwradCategory.knowledge,
+      for (final t in DefaultAwradTemplates.dailyEssentials.tasks)
+        t.title: t.category,
     };
 
     for (final key in legacyKeys) {
