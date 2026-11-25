@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import 'models/awrad_status.dart';
+import 'services/awrad_provider.dart';
 import 'services/date_utils.dart';
+import 'services/notification_service.dart';
 import 'services/progress_provider.dart';
 import 'services/settings_provider.dart';
 import 'ui/pages/home_page.dart';
@@ -19,12 +22,53 @@ void main() {
   runApp(const ProviderScope(child: OradApp()));
 }
 
-class OradApp extends ConsumerWidget {
+class OradApp extends ConsumerStatefulWidget {
   const OradApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OradApp> createState() => _OradAppState();
+}
+
+class _OradAppState extends ConsumerState<OradApp> {
+  @override
+  void initState() {
+    super.initState();
+    NotificationService.instance.init(
+      onAction: (actionId) {
+        if (actionId == NotificationService.markAllDoneActionId) {
+          _markAllTodayDone();
+        }
+      },
+    );
+  }
+
+  Future<void> _markAllTodayDone() async {
+    final today = normalizeDate(DateTime.now());
+    final tasks = ref.read(awradTasksProvider).where((t) => t.appliesTo(today));
+    final logNotifier = ref.read(dailyAwradLogProvider(today).notifier);
+    for (final task in tasks) {
+      await logNotifier.setTaskStatus(task.id, AwradStatus.done);
+    }
+  }
+
+  void _syncReminder() {
+    final today = normalizeDate(DateTime.now());
+    final settings = ref.read(settingsProvider);
+    final tasks = ref.read(awradTasksProvider).where((t) => t.appliesTo(today));
+    final log = ref.read(dailyAwradLogProvider(today));
+    final remaining = tasks
+        .where((t) => log.statusFor(t.id) != AwradStatus.done)
+        .length;
+    NotificationService.instance.syncDailyReminder(
+      settings: settings,
+      remainingAwradCount: remaining,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
+    final today = normalizeDate(DateTime.now());
 
     ref.listen<bool>(
       settingsProvider.select((s) => s.keepScreenAwake),
@@ -36,6 +80,10 @@ class OradApp extends ConsumerWidget {
         }
       },
     );
+
+    ref.listen(settingsProvider, (_, __) => _syncReminder());
+    ref.listen(awradTasksProvider, (_, __) => _syncReminder());
+    ref.listen(dailyAwradLogProvider(today), (_, __) => _syncReminder());
 
     return MaterialApp(
       title: 'Awrad',

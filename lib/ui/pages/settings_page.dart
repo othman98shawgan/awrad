@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../services/settings_provider.dart';
+import '../../models/awrad_status.dart';
 import '../../services/awrad_provider.dart';
+import '../../services/date_utils.dart';
+import '../../services/notification_service.dart';
+import '../../services/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/manage_awrad_sheet.dart';
 import '../widgets/prayer_sunnah_sheet.dart';
@@ -228,13 +231,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 title: const Text('Daily Reminder'),
                 subtitle: Text(
                   settings.dailyReminderEnabled
-                      ? 'Saved for $formattedReminderTime (OS notifications coming soon)'
-                      : 'Off · Tap to save a reminder time',
+                      ? 'Scheduled at $formattedReminderTime · Auto-cancels when done'
+                      : 'Off · Tap to enable evening reminder',
                 ),
                 value: settings.dailyReminderEnabled,
                 activeThumbColor: colors.emerald,
-                onChanged: (enabled) =>
-                    notifier.setDailyReminder(enabled: enabled),
+                onChanged: (enabled) async {
+                  await notifier.setDailyReminder(enabled: enabled);
+                  if (enabled) {
+                    await NotificationService.instance.requestPermissions();
+                  }
+                },
               ),
               if (settings.dailyReminderEnabled) ...[
                 const Divider(),
@@ -293,6 +300,28 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   value: settings.keepScreenAwake,
                   activeThumbColor: colors.emerald,
                   onChanged: notifier.setKeepScreenAwake,
+                ),
+                const Divider(),
+                ListTile(
+                  leading: Icon(
+                    Icons.notifications_active_outlined,
+                    color: colors.emerald,
+                  ),
+                  title: const Text('Send Test Notification'),
+                  subtitle: const Text('Verify daily reminder & action button'),
+                  onTap: () {
+                    final today = normalizeDate(DateTime.now());
+                    final tasks = ref
+                        .read(awradTasksProvider)
+                        .where((t) => t.appliesTo(today));
+                    final log = ref.read(dailyAwradLogProvider(today));
+                    final remaining = tasks
+                        .where((t) => log.statusFor(t.id) != AwradStatus.done)
+                        .length;
+                    NotificationService.instance.sendTestNotification(
+                      remainingAwradCount: remaining,
+                    );
+                  },
                 ),
                 const Divider(),
                 ListTile(

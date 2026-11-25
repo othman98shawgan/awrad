@@ -46,6 +46,11 @@ void main() {
     await tester.tap(find.text('Daily Reminder'));
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('Reminder Time'),
+      150,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Reminder Time'), findsOneWidget);
 
     final prefs = await SharedPreferences.getInstance();
