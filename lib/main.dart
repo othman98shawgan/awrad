@@ -113,12 +113,17 @@ class _AwradShellState extends ConsumerState<AwradShell> {
     final showTodayAction = _currentIndex == 0 || _currentIndex == 1;
     final progressAnchor = ref.watch(progressAnchorDateProvider);
     final today = normalizeDate(DateTime.now());
-    final isCurrentWeek =
-        progressAnchor.year == today.year &&
-        progressAnchor.month == today.month &&
-        (progressAnchor.difference(today).inDays.abs() < 7 &&
-            progressAnchor.weekday - today.weekday ==
-                progressAnchor.difference(today).inDays);
+    final todaySundayStart = DateTime(
+      today.year,
+      today.month,
+      today.day - (today.weekday % 7),
+    );
+    final anchorSundayStart = DateTime(
+      progressAnchor.year,
+      progressAnchor.month,
+      progressAnchor.day - (progressAnchor.weekday % 7),
+    );
+    final isCurrentWeek = anchorSundayStart == todaySundayStart;
     final pages = [
       const HomePage(),
       const PrayerProgressPage(),

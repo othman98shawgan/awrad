@@ -88,6 +88,27 @@ class AwradTaskSummary {
   }
 }
 
+/// Per-prayer completion breakdown over a selected date range.
+class PrayerPeriodSummary {
+  final String name;
+  final int daysCount;
+  final int fardDoneCount;
+  final int inMasjidCount;
+  final int completedRakahs;
+  final int totalRakahs;
+
+  const PrayerPeriodSummary({
+    required this.name,
+    required this.daysCount,
+    required this.fardDoneCount,
+    required this.inMasjidCount,
+    required this.completedRakahs,
+    required this.totalRakahs,
+  });
+
+  double get fardRate => daysCount == 0 ? 0.0 : fardDoneCount / daysCount;
+}
+
 /// Parameter object for querying progress over an inclusive date range.
 class ProgressRangeQuery {
   final DateTime start;
@@ -194,4 +215,46 @@ final awradTaskBreakdownProvider = FutureProvider.autoDispose
       })
       .where((s) => s.applicableDays > 0)
       .toList();
+});
+
+/// Computes per-prayer breakdown across [ProgressRangeQuery] (elapsed days).
+final prayerBreakdownProvider = FutureProvider.autoDispose
+    .family<List<PrayerPeriodSummary>, ProgressRangeQuery>((ref, query) async {
+  ref.watch(prayerDataVersionProvider);
+  final prayerRepo = ref.watch(prayerRepositoryProvider);
+  final config = ref.watch(prayerConfigProvider);
+  final days = datesInRange(query.start, query.end);
+  if (days.isEmpty) return const [];
+
+  final prayerLogs = await prayerRepo.loadLogsInRange(query.start, query.end);
+  final defaults = DailyPrayerLog.defaultPrayers(config);
+
+  return List.generate(defaults.length, (i) {
+    final prayerName = defaults[i].name;
+    int fardDone = 0;
+    int inMasjid = 0;
+    int completedRakahs = 0;
+    int totalRakahs = 0;
+
+    for (final date in days) {
+      final key = formatDateKey(date);
+      final log = prayerLogs[key];
+      final item = (log != null && i < log.prayers.length)
+          ? log.prayers[i]
+          : defaults[i];
+      if (item.fardDone) fardDone++;
+      if (item.inMasjid) inMasjid++;
+      completedRakahs += item.completedRakahs;
+      totalRakahs += item.totalRakahs;
+    }
+
+    return PrayerPeriodSummary(
+      name: prayerName,
+      daysCount: days.length,
+      fardDoneCount: fardDone,
+      inMasjidCount: inMasjid,
+      completedRakahs: completedRakahs,
+      totalRakahs: totalRakahs,
+    );
+  });
 });

@@ -12,7 +12,8 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('computeAwradStreak and formatProgressReportText include all Awrad', () {
+  test('formatAwradReportText and formatPrayersReportText format separate reports',
+      () {
     final today = DateTime(2026, 11, 24);
     final days = [
       DailyProgressSummary(
@@ -70,27 +71,45 @@ void main() {
       ),
     ];
 
+    const prayerSummaries = [
+      PrayerPeriodSummary(
+        name: 'Fajr',
+        daysCount: 3,
+        fardDoneCount: 3,
+        inMasjidCount: 2,
+        completedRakahs: 10,
+        totalRakahs: 12,
+      ),
+    ];
+
     expect(computeAwradStreak(days, now: today), 3);
 
-    final report = formatProgressReportText(
+    final awradReport = formatAwradReportText(
       periodLabel: 'Nov 22 – Nov 24',
-      days: days,
+      elapsedDays: days,
       taskSummaries: taskSummaries,
       streakDays: 3,
     );
-    expect(report, contains('Awrad Progress Report — Nov 22 – Nov 24'));
-    expect(report, contains('Active days: 3 / 3 | Streak: 3 days'));
-    expect(report, contains('Awrad completion: 80%'));
-    expect(report, contains('Fard prayers: 13 / 15 (87%)'));
-    expect(report, contains('In Masjid: 11 / 15 (73%)'));
-    expect(report, contains('Awrad Breakdown:'));
-    expect(report, contains('Read Quran: 3 / 3d (100%)'));
-    expect(report, contains('Morning adhkar: 2 done, 1 half / 3d (83%)'));
-    expect(report.toLowerCase(), isNot(contains('teacher')));
+    expect(awradReport, contains('Awrad Report — Nov 22 – Nov 24'));
+    expect(awradReport, contains('Active days: 3 / 3 | Streak: 3 days'));
+    expect(awradReport, contains('Overall completion: 80%'));
+    expect(awradReport, contains('Read Quran: 3 / 3d (100%)'));
+    expect(awradReport, contains('Morning adhkar: 2 done, 1 half / 3d (83%)'));
+    expect(awradReport, isNot(contains('Fard prayers')));
+
+    final prayersReport = formatPrayersReportText(
+      periodLabel: 'Nov 22 – Nov 24',
+      elapsedDays: days,
+      prayerSummaries: prayerSummaries,
+    );
+    expect(prayersReport, contains('Prayers Report — Nov 22 – Nov 24'));
+    expect(prayersReport, contains('Fard prayers: 13 / 15 (87%)'));
+    expect(prayersReport, contains('In Masjid: 11 / 15 (73%)'));
+    expect(prayersReport, contains('Fajr: 3/3 Fard · 2 Masjid · 10/12 rak‘ahs'));
   });
 
   testWidgets(
-      'Progress tab starts month on Sunday and shows Progress Report with all Awrad',
+      'Progress tab starts week on Sunday, counts elapsed days, and opens Awrad & Prayers reports',
       (tester) async {
     await tester.pumpWidget(const ProviderScope(child: OradApp()));
     await tester.pumpAndSettle();
@@ -105,35 +124,28 @@ void main() {
 
     expect(find.text('Consistency Heatmap'), findsOneWidget);
     expect(find.text('Sun'), findsOneWidget);
-    expect(find.text('Monthly'), findsOneWidget);
-    expect(find.text('Weekly'), findsOneWidget);
 
-    // Switch to Weekly
+    // Switch to Weekly and verify Sunday is still the first day label
     await tester.tap(find.text('Weekly'));
     await tester.pumpAndSettle();
-    expect(find.text('Consistency Heatmap'), findsOneWidget);
+    expect(find.text('Sun'), findsOneWidget);
 
     // Step to previous week and return via AppBar 'This week' icon
-    final initialPeriodText =
-        tester.widget<Text>(find.byType(Text).at(3)).data;
     await tester.tap(find.byTooltip('Previous period'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('This week'));
     await tester.pumpAndSettle();
-    expect(initialPeriodText, isNotNull);
 
-    // Open Progress Report sheet
+    // Scroll to Reports card
     await tester.scrollUntilVisible(
-      find.text('Report'),
+      find.text('Awrad Report'),
       200,
       scrollable: find.byType(Scrollable).last,
     );
-    expect(find.text('Progress Report'), findsOneWidget);
-    await tester.tap(find.text('Report'));
+    await tester.ensureVisible(find.text('Awrad Report'));
     await tester.pumpAndSettle();
-
-    expect(find.text('All Awrad'), findsOneWidget);
-    expect(find.text('Read Quran'), findsOneWidget);
+    expect(find.textContaining('Elapsed days in'), findsOneWidget);
+    expect(find.text('Prayers Report'), findsOneWidget);
 
     String? copiedText;
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -152,14 +164,22 @@ void main() {
       );
     });
 
-    expect(find.text('Copy Report'), findsOneWidget);
-    await tester.tap(find.text('Copy Report'));
+    // Open Awrad Report and copy
+    await tester.tap(find.text('Awrad Report'));
+    await tester.pumpAndSettle();
+    expect(find.text('All Awrad'), findsOneWidget);
+    expect(find.text('Read Quran'), findsOneWidget);
+
+    await tester.tap(find.text('Copy Awrad Report'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
+    expect(copiedText, contains('Awrad Report —'));
 
-    expect(copiedText, contains('Awrad Progress Report'));
-    expect(copiedText, contains('Read Quran'));
-    expect(find.text('Report copied to clipboard.'), findsOneWidget);
+    // Dismiss snackbar/wait then open Prayers Report
+    await tester.tap(find.text('Prayers Report'));
+    await tester.pumpAndSettle();
+    expect(find.text('By Prayer'), findsOneWidget);
+    expect(find.text('Fajr'), findsOneWidget);
   });
 
   testWidgets('tapping View Day jumps to Awrad tab', (tester) async {

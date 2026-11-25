@@ -22,7 +22,6 @@ class ConsistencyHeatmap extends StatelessWidget {
     required this.onViewDay,
   });
 
-  static const _dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   static const _sundayFirstLabels = [
     'Sun',
     'Mon',
@@ -125,7 +124,7 @@ class ConsistencyHeatmap extends StatelessWidget {
             child: Column(
               children: [
                 Text(
-                  _dayLabels[day.date.weekday - 1],
+                  _sundayFirstLabels[day.date.weekday % 7],
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: isSelected ? colors.emerald : colors.mutedText,
                     fontWeight:
