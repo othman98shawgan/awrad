@@ -1,5 +1,4 @@
 import 'package:awrad/main.dart';
-import 'package:awrad/services/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,7 +10,7 @@ void main() {
   });
 
   testWidgets(
-      'Settings displays Guest Mode, Manage Awrad, multiple Reminders, and Developer Mode',
+      'Settings opens Scheduled Reminders modal with notes and unlocks Developer Mode',
       (tester) async {
     await tester.pumpWidget(const ProviderScope(child: OradApp()));
     await tester.pumpAndSettle();
@@ -26,39 +25,38 @@ void main() {
 
     expect(find.text('Guest Mode'), findsOneWidget);
     expect(find.text('Manage Awrad Tasks'), findsOneWidget);
-    expect(find.text('12 active · Edit, delete, or reorder'), findsOneWidget);
 
-    // Open Manage Awrad sheet
-    await tester.tap(find.text('Manage Awrad Tasks'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Manage Awrad'), findsOneWidget);
-    expect(find.text('Read Quran'), findsOneWidget);
-
-    // Dismiss sheet
-    Navigator.of(tester.element(find.text('Manage Awrad'))).pop();
-    await tester.pumpAndSettle();
-
-    // Scroll to Daily Reminders and add two reminders via settingsProvider
+    // Open Scheduled Reminders modal and add a reminder with a note
     await tester.scrollUntilVisible(
-      find.text('Daily Reminders'),
+      find.text('Scheduled Reminders'),
       200,
       scrollable: find.byType(Scrollable).last,
     );
-    expect(find.text('Daily Reminders'), findsOneWidget);
-
-    final container = ProviderScope.containerOf(
-      tester.element(find.text('Daily Reminders')),
-    );
-    await container
-        .read(settingsProvider.notifier)
-        .addReminder(const TimeOfDay(hour: 6, minute: 0));
-    await container
-        .read(settingsProvider.notifier)
-        .addReminder(const TimeOfDay(hour: 20, minute: 30));
+    await tester.tap(find.text('Scheduled Reminders'));
     await tester.pumpAndSettle();
 
-    expect(find.byTooltip('Delete reminder'), findsNWidgets(2));
+    expect(find.text('No reminders scheduled yet'), findsOneWidget);
+    await tester.tap(find.text('Add'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('New Reminder'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'Evening Adhkar');
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Add'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Evening Adhkar'), findsOneWidget);
+    expect(find.byTooltip('Delete reminder'), findsOneWidget);
+
+    // Dismiss modal
+    Navigator.of(tester.element(find.text('Scheduled Reminders').last)).pop();
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 active · 1 total'), findsOneWidget);
 
     // Keep Screen Awake is hidden until Developer Mode is unlocked (7 taps on version)
     expect(find.text('Keep Screen Awake'), findsNothing);

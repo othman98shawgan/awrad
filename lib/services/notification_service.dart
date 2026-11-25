@@ -136,10 +136,6 @@ class NotificationService {
         await _plugin.cancel(id: reminderIdBase + i);
       }
 
-      final body = remainingAwradCount > 0
-          ? 'You have $remainingAwradCount Awrad remaining today. Tap to open.'
-          : 'Time for your daily Awrad.';
-
       for (int i = 0; i < reminders.length && i < maxRemindersToClear; i++) {
         final reminder = reminders[i];
         if (!reminder.enabled) continue;
@@ -150,6 +146,15 @@ class NotificationService {
           minute: reminder.minute,
           skipToday: remainingAwradCount == 0,
         );
+
+        final hasNote = reminder.note != null && reminder.note!.isNotEmpty;
+        final body = hasNote
+            ? (remainingAwradCount > 0
+                ? '${reminder.note} · $remainingAwradCount Awrad remaining'
+                : reminder.note!)
+            : (remainingAwradCount > 0
+                ? 'You have $remainingAwradCount Awrad remaining today. Tap to open.'
+                : 'Time for your daily Awrad.');
 
         await _plugin.zonedSchedule(
           id: reminderIdBase + i,

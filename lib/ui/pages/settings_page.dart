@@ -9,6 +9,7 @@ import '../../services/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/manage_awrad_sheet.dart';
 import '../widgets/prayer_sunnah_sheet.dart';
+import '../widgets/reminders_sheet.dart';
 import '../widgets/template_import_sheet.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -217,88 +218,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         const SizedBox(height: 12),
         Card(
-          child: Column(
-            children: [
-              ListTile(
-                leading:
-                    Icon(Icons.notifications_outlined, color: colors.emerald),
-                title: const Text('Daily Reminders'),
-                subtitle: Text(
-                  settings.reminders.isEmpty
-                      ? 'Add one or more reminder times'
-                      : 'Auto-cancels for today when all Awrad are done',
-                ),
-                trailing: TextButton.icon(
-                  onPressed: () async {
-                    final picked = await showTimePicker(
-                      context: context,
-                      initialTime: const TimeOfDay(hour: 20, minute: 30),
-                    );
-                    if (picked != null) {
-                      await notifier.addReminder(picked);
-                      await NotificationService.instance.requestPermissions();
-                    }
-                  },
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Add'),
-                ),
-              ),
-              for (int i = 0; i < settings.reminders.length; i++) ...[
-                const Divider(),
-                ListTile(
-                  leading: Icon(
-                    Icons.schedule_rounded,
-                    color: settings.reminders[i].enabled
-                        ? colors.emerald
-                        : colors.mutedText,
-                  ),
-                  title: Text(
-                    TimeOfDay(
-                      hour: settings.reminders[i].hour,
-                      minute: settings.reminders[i].minute,
-                    ).format(context),
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  onTap: () async {
-                    final picked = await showTimePicker(
-                      context: context,
-                      initialTime: TimeOfDay(
-                        hour: settings.reminders[i].hour,
-                        minute: settings.reminders[i].minute,
-                      ),
-                    );
-                    if (picked != null) {
-                      await notifier.updateReminderTime(i, picked);
-                    }
-                  },
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Switch(
-                        value: settings.reminders[i].enabled,
-                        activeThumbColor: colors.emerald,
-                        onChanged: (val) async {
-                          await notifier.toggleReminder(i, val);
-                          if (val) {
-                            await NotificationService.instance
-                                .requestPermissions();
-                          }
-                        },
-                      ),
-                      IconButton(
-                        tooltip: 'Delete reminder',
-                        icon: Icon(
-                          Icons.delete_outline_rounded,
-                          size: 20,
-                          color: colors.mutedText,
-                        ),
-                        onPressed: () => notifier.removeReminder(i),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
+          child: ListTile(
+            leading: Icon(Icons.notifications_outlined, color: colors.emerald),
+            title: const Text('Scheduled Reminders'),
+            subtitle: Text(
+              settings.reminders.isEmpty
+                  ? 'None scheduled · Tap to add'
+                  : '${settings.reminders.where((r) => r.enabled).length} active · ${settings.reminders.length} total',
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => showRemindersSheet(context),
           ),
         ),
         if (settings.developerModeEnabled) ...[
