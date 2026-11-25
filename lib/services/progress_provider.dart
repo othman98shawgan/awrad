@@ -180,6 +180,37 @@ final progressRangeProvider = FutureProvider.autoDispose
   return summaries;
 });
 
+/// Lightweight Awrad-only daily score lookup for the 7-day strip on HomePage.
+/// Avoids loading or decoding prayer logs during horizontal date swipes.
+final awradScoresRangeProvider = FutureProvider.autoDispose
+    .family<Map<DateTime, double>, ProgressRangeQuery>((ref, query) async {
+  ref.watch(awradDataVersionProvider);
+  final awradRepo = ref.watch(awradRepositoryProvider);
+  final tasks = ref.watch(awradTasksProvider);
+
+  final effectiveTasks = tasks.isNotEmpty ? tasks : await awradRepo.loadTasks();
+  final awradLogs = await awradRepo.loadLogsInRange(query.start, query.end);
+
+  final scores = <DateTime, double>{};
+  for (final date in datesInRange(query.start, query.end)) {
+    final key = formatDateKey(date);
+    final applicableTasks =
+        effectiveTasks.where((t) => t.appliesTo(date)).toList();
+    if (applicableTasks.isEmpty) {
+      scores[date] = 0.0;
+      continue;
+    }
+    final log = awradLogs[key];
+    double scoreSum = 0;
+    for (final task in applicableTasks) {
+      final status = log?.statusFor(task.id) ?? AwradStatus.notDone;
+      scoreSum += status.score;
+    }
+    scores[date] = scoreSum / applicableTasks.length;
+  }
+  return scores;
+});
+
 /// Computes per-task completion breakdown across [ProgressRangeQuery].
 final awradTaskBreakdownProvider = FutureProvider.autoDispose
     .family<List<AwradTaskSummary>, ProgressRangeQuery>((ref, query) async {

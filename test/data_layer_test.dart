@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:awrad/models/app_settings.dart';
+import 'package:awrad/models/awrad_log.dart';
 import 'package:awrad/models/awrad_status.dart';
 import 'package:awrad/models/awrad_task.dart';
 import 'package:awrad/models/prayer_item.dart';
@@ -185,6 +186,26 @@ void main() {
       expect(reloaded.prayers.first.fardDone, isTrue);
       expect(reloaded.prayers.first.inMasjid, isTrue);
       expect(reloaded.completedRakahs, 2);
+      expect(repo.hasCachedLog(date), isTrue);
+      expect(repo.getCachedLog(date)?.completedRakahs, 2);
+    });
+
+    test('LocalAwradRepository caches loaded and saved logs synchronously', () async {
+      SharedPreferences.setMockInitialValues({});
+      final repo = LocalAwradRepository();
+      final date = DateTime(2026, 11, 25);
+
+      expect(repo.getCachedLog(date), isNull);
+      final initial = await repo.loadLog(date);
+      expect(repo.getCachedLog(date), isNotNull);
+      expect(repo.getCachedLog(date)?.dateKey, initial.dateKey);
+
+      final updated = initial.withEntry(
+        'task_1',
+        AwradTaskEntry(status: AwradStatus.done, updatedAt: date),
+      );
+      await repo.saveLog(updated);
+      expect(repo.getCachedLog(date)?.statusFor('task_1'), AwradStatus.done);
     });
   });
 

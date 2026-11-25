@@ -68,8 +68,27 @@ class PrayerListNotifier extends StateNotifier<List<PrayerItem>> {
     this._config, {
     void Function()? onMutated,
   })  : _onMutated = onMutated,
-        super(DailyPrayerLog.defaultPrayers(_config)) {
-    _load();
+        super(_initialPrayers(_repo, date, _config)) {
+    if (!_repo.hasCachedLog(date)) {
+      _load();
+    }
+  }
+
+  static List<PrayerItem> _initialPrayers(
+    PrayerRepository repo,
+    DateTime date,
+    List<PrayerSunnahConfig> config,
+  ) {
+    final cached = repo.getCachedLog(date);
+    if (cached == null) return DailyPrayerLog.defaultPrayers(config);
+    final configByName = {for (final c in config) c.name: c};
+    return [
+      for (final p in cached.prayers)
+        if (configByName.containsKey(p.name))
+          p.applyConfig(configByName[p.name]!)
+        else
+          p,
+    ];
   }
 
   Future<void> _load() async {

@@ -12,6 +12,7 @@ import 'store_manager.dart';
 abstract class AwradRepository {
   Future<List<AwradTask>> loadTasks();
   Future<void> saveTasks(List<AwradTask> tasks);
+  DailyAwradLog? getCachedLog(DateTime date) => null;
   Future<DailyAwradLog> loadLog(DateTime date);
   Future<void> saveLog(DailyAwradLog log);
   Future<Map<String, DailyAwradLog>> loadLogsInRange(DateTime start, DateTime end);
@@ -25,7 +26,16 @@ class LocalAwradRepository implements AwradRepository {
   static const String _legacyPrefix = 'tasks_';
   static const String _migratedKey = 'awrad_legacy_migrated_v1';
 
+  final Map<String, DailyAwradLog> _logCache = {};
+  bool _migrated = false;
+
   String _logKeyFor(String dateKey) => '$_logPrefix$dateKey';
+
+  @override
+  DailyAwradLog? getCachedLog(DateTime date) {
+    final dateKey = formatDateKey(normalizeDate(date));
+    return _logCache[dateKey];
+  }
 
   @override
   Future<List<AwradTask>> loadTasks() async {
@@ -56,16 +66,24 @@ class LocalAwradRepository implements AwradRepository {
     await _migrateLegacyDataIfNeeded();
 
     final dateKey = formatDateKey(normalizeDate(date));
+    final cached = _logCache[dateKey];
+    if (cached != null) return cached;
+
     final raw = await StorageManager.readData(_logKeyFor(dateKey));
+    final DailyAwradLog log;
     if (raw is String && raw.isNotEmpty) {
       final map = Map<String, dynamic>.from(jsonDecode(raw) as Map);
-      return DailyAwradLog.fromMap(map);
+      log = DailyAwradLog.fromMap(map);
+    } else {
+      log = DailyAwradLog(dateKey: dateKey);
     }
-    return DailyAwradLog(dateKey: dateKey);
+    _logCache[dateKey] = log;
+    return log;
   }
 
   @override
   Future<void> saveLog(DailyAwradLog log) async {
+    _logCache[log.dateKey] = log;
     final encoded = jsonEncode(log.toMap());
     await StorageManager.saveData(_logKeyFor(log.dateKey), encoded);
   }
@@ -80,10 +98,22 @@ class LocalAwradRepository implements AwradRepository {
     final result = <String, DailyAwradLog>{};
     for (final date in datesInRange(start, end)) {
       final dateKey = formatDateKey(date);
+      final cached = _logCache[dateKey];
+      if (cached != null) {
+        if (cached.entries.isNotEmpty) {
+          result[dateKey] = cached;
+        }
+        continue;
+      }
+
       final raw = await StorageManager.readData(_logKeyFor(dateKey));
       if (raw is String && raw.isNotEmpty) {
         final map = Map<String, dynamic>.from(jsonDecode(raw) as Map);
-        result[dateKey] = DailyAwradLog.fromMap(map);
+        final parsed = DailyAwradLog.fromMap(map);
+        _logCache[dateKey] = parsed;
+        result[dateKey] = parsed;
+      } else {
+        _logCache[dateKey] = DailyAwradLog(dateKey: dateKey);
       }
     }
     return result;
@@ -114,12 +144,17 @@ class LocalAwradRepository implements AwradRepository {
   /// One-time migration from legacy `tasks_YYYY-MM-DD` lists into separated
   /// task definitions (`awrad_tasks_v1`) and daily logs (`awrad_log_v1_YYYY-MM-DD`).
   Future<void> _migrateLegacyDataIfNeeded() async {
+    if (_migrated) return;
     final migrated = await StorageManager.readData(_migratedKey);
-    if (migrated == true) return;
+    if (migrated == true) {
+      _migrated = true;
+      return;
+    }
 
     final existingV1 = await StorageManager.readData(_tasksKey);
     if (existingV1 is String && existingV1.isNotEmpty) {
       await StorageManager.saveData(_migratedKey, true);
+      _migrated = true;
       return;
     }
 
@@ -128,6 +163,7 @@ class LocalAwradRepository implements AwradRepository {
 
     if (legacyKeys.isEmpty) {
       await StorageManager.saveData(_migratedKey, true);
+      _migrated = true;
       return;
     }
 
@@ -198,5 +234,6 @@ class LocalAwradRepository implements AwradRepository {
     }
 
     await StorageManager.saveData(_migratedKey, true);
+    _migrated = true;
   }
 }
