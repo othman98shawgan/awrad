@@ -218,6 +218,23 @@ void main() {
       expect(notifier.state, DateTime(2026, 11, 23));
     });
 
+    test('toHijriDate and formatHijriDate convert Gregorian dates accurately', () {
+      final ramadan1445 = toHijriDate(DateTime(2024, 3, 11));
+      expect(ramadan1445, const HijriDate(year: 1445, month: 9, day: 1));
+      expect(formatHijriDate(DateTime(2024, 3, 11)), '1 Ramadan 1445 AH');
+
+      expect(
+        formatHijriDate(DateTime(2026, 11, 26)),
+        '15 Jumada al-Akhirah 1448 AH',
+      );
+
+      final (hStart, hEnd) = hijriMonthRange(DateTime(2026, 11, 26));
+      expect(hStart, DateTime(2026, 11, 12));
+      expect(hEnd, DateTime(2026, 12, 10));
+      expect(toHijriDate(hStart), const HijriDate(year: 1448, month: 6, day: 1));
+      expect(stepHijriMonth(DateTime(2026, 11, 26), 1), DateTime(2026, 12, 11));
+    });
+
     test('AppSettings serializes themeMode, wakelock, and multiple reminders', () {
       const settings = AppSettings(
         themeMode: ThemeMode.dark,

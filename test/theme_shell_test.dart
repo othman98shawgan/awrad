@@ -60,6 +60,7 @@ void main() {
     final yesterday = DateTime(today.year, today.month, today.day - 1);
 
     expect(find.text(formatFriendlyDate(today, now: today)), findsOneWidget);
+    expect(find.text(formatHijriDate(today)), findsOneWidget);
     expect(find.byTooltip('Go to today'), findsOneWidget);
     expect(find.text('${today.day}'), findsOneWidget);
 

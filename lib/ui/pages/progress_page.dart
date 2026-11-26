@@ -59,8 +59,11 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
     _selectedDay = normalizeDate(DateTime.now());
   }
 
-  (DateTime, DateTime) _currentRange(DateTime anchorDate) {
+  (DateTime, DateTime) _currentRange(DateTime anchorDate, bool isHijri) {
     if (_period == _ProgressPeriod.monthly) {
+      if (isHijri) {
+        return hijriMonthRange(anchorDate);
+      }
       final start = DateTime(anchorDate.year, anchorDate.month, 1);
       final end = DateTime(anchorDate.year, anchorDate.month + 1, 0);
       return (start, end);
@@ -76,8 +79,12 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
     return (start, end);
   }
 
-  String _periodLabel(DateTime start, DateTime end) {
+  String _periodLabel(DateTime start, DateTime end, bool isHijri) {
     if (_period == _ProgressPeriod.monthly) {
+      if (isHijri) {
+        final h = toHijriDate(start);
+        return '${h.monthName} ${h.year} AH';
+      }
       return '${_monthNames[start.month - 1]} ${start.year}';
     }
     final startText = '${_monthShort[start.month - 1]} ${start.day}';
@@ -85,14 +92,35 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
     return '$startText – $endText';
   }
 
-  void _stepPeriod(DateTime anchorDate, int delta) {
-    final next = _period == _ProgressPeriod.monthly
-        ? DateTime(anchorDate.year, anchorDate.month + delta, 1)
-        : DateTime(
-            anchorDate.year,
-            anchorDate.month,
-            anchorDate.day + (delta * 7),
-          );
+  String _periodSubtitle(DateTime start, DateTime end, bool isHijri) {
+    if (_period == _ProgressPeriod.monthly && isHijri) {
+      final startText = '${_monthShort[start.month - 1]} ${start.day}';
+      final endText = '${_monthShort[end.month - 1]} ${end.day}';
+      if (start.year == end.year) {
+        return '$startText – $endText, ${start.year}';
+      }
+      return '$startText, ${start.year} – $endText, ${end.year}';
+    }
+    return formatHijriRange(
+      start,
+      end,
+      includeDays: _period == _ProgressPeriod.weekly,
+    );
+  }
+
+  void _stepPeriod(DateTime anchorDate, int delta, bool isHijri) {
+    final DateTime next;
+    if (_period == _ProgressPeriod.monthly) {
+      next = isHijri
+          ? stepHijriMonth(anchorDate, delta)
+          : DateTime(anchorDate.year, anchorDate.month + delta, 1);
+    } else {
+      next = DateTime(
+        anchorDate.year,
+        anchorDate.month,
+        anchorDate.day + (delta * 7),
+      );
+    }
     ref.read(progressAnchorDateProvider.notifier).state = next;
     setState(() {
       _selectedDay = null;
@@ -105,8 +133,9 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
     final theme = Theme.of(context);
     final today = normalizeDate(DateTime.now());
     final anchorDate = ref.watch(progressAnchorDateProvider);
-    final (start, end) = _currentRange(anchorDate);
-    final label = _periodLabel(start, end);
+    final isHijri = ref.watch(progressHijriCalendarProvider);
+    final (start, end) = _currentRange(anchorDate, isHijri);
+    final label = _periodLabel(start, end, isHijri);
 
     final rangeQuery = ProgressRangeQuery(start, end);
     final rangeAsync = ref.watch(progressRangeProvider(rangeQuery));
@@ -148,7 +177,10 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
     final streakAsync = ref.watch(
       progressRangeProvider(ProgressRangeQuery(streakStart, today)),
     );
-    final streak = computeAwradStreak(streakAsync.valueOrNull ?? elapsedDays);
+    final streakSummaries = streakAsync.valueOrNull ?? elapsedDays;
+    final streak = computeAwradStreak(streakSummaries);
+    final bestStreak = computeBestAwradStreak(streakSummaries);
+    final prayerStreak = computePrayerStreak(streakSummaries);
 
     final awradPct = elapsedDays.isEmpty
         ? 0
@@ -186,6 +218,8 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
                 _period = sel.first;
                 _selectedDay = null;
               });
+              ref.read(progressIsMonthlyProvider.notifier).state =
+                  sel.first == _ProgressPeriod.monthly;
             },
           ),
         ),
@@ -202,21 +236,36 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
               IconButton(
                 tooltip: 'Previous period',
                 icon: const Icon(Icons.chevron_left_rounded),
-                onPressed: () => _stepPeriod(anchorDate, -1),
+                onPressed: () => _stepPeriod(anchorDate, -1, isHijri),
               ),
               Expanded(
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _periodSubtitle(start, end, isHijri),
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colors.mutedText,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               IconButton(
                 tooltip: 'Next period',
                 icon: const Icon(Icons.chevron_right_rounded),
-                onPressed: () => _stepPeriod(anchorDate, 1),
+                onPressed: () => _stepPeriod(anchorDate, 1, isHijri),
               ),
             ],
           ),
@@ -262,6 +311,12 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        _StreakMilestonesCard(
+          currentStreak: streak,
+          bestStreak: bestStreak,
+          prayerStreak: prayerStreak,
         ),
         const SizedBox(height: 14),
         _ReportActionCard(
@@ -396,6 +451,110 @@ class _ProgressStatCard extends StatelessWidget {
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w800,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StreakMilestonesCard extends StatelessWidget {
+  final int currentStreak;
+  final int bestStreak;
+  final int prayerStreak;
+
+  const _StreakMilestonesCard({
+    required this.currentStreak,
+    required this.bestStreak,
+    required this.prayerStreak,
+  });
+
+  static const _milestones = [3, 7, 14, 30, 40];
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.awradColors;
+    final theme = Theme.of(context);
+    final effectiveBest = bestStreak > currentStreak ? bestStreak : currentStreak;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.emoji_events_outlined,
+                  size: 18,
+                  color: colors.amber,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Streaks & Milestones',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  'Best: ${effectiveBest}d · 5/5 Fard: ${prayerStreak}d',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colors.mutedText,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: _milestones.map((days) {
+                final unlocked = effectiveBest >= days;
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: days == _milestones.last ? 0 : 6,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      decoration: BoxDecoration(
+                        color: unlocked
+                            ? colors.emeraldSoft
+                            : colors.heatmapLevels[0].withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: unlocked
+                              ? colors.emerald.withValues(alpha: 0.5)
+                              : colors.cardBorder,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            unlocked
+                                ? Icons.verified_rounded
+                                : Icons.lock_outline_rounded,
+                            size: 13,
+                            color: unlocked ? colors.emerald : colors.mutedText,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            '${days}d',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color:
+                                  unlocked ? colors.emerald : colors.mutedText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ],
         ),

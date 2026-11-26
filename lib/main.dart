@@ -140,13 +140,33 @@ class _AwradShellState extends ConsumerState<AwradShell> {
         title: Text(_titles[_currentIndex]),
         actions: [
           if (showTodayAction) const TodayCalendarButton(),
-          if (_currentIndex == 2)
+          if (_currentIndex == 2) ...[
+            if (ref.watch(progressIsMonthlyProvider))
+              IconButton(
+                tooltip: ref.watch(progressHijriCalendarProvider)
+                    ? 'Switch to Gregorian month'
+                    : 'Switch to Hijri month',
+                icon: Icon(
+                  ref.watch(progressHijriCalendarProvider)
+                      ? Icons.nights_stay_rounded
+                      : Icons.nights_stay_outlined,
+                  color: ref.watch(progressHijriCalendarProvider)
+                      ? colors.emerald
+                      : null,
+                ),
+                onPressed: () {
+                  final notifier =
+                      ref.read(progressHijriCalendarProvider.notifier);
+                  notifier.state = !notifier.state;
+                },
+              ),
             TodayCalendarButton(
               tooltip: 'This week',
               isCurrentOverride: isCurrentWeek,
               onPressedOverride: () =>
                   ref.read(progressAnchorDateProvider.notifier).state = today,
             ),
+          ],
           if (_currentIndex == 0)
             Padding(
               padding: const EdgeInsets.only(right: 8),

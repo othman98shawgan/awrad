@@ -135,25 +135,39 @@ class DateSwitcherBar extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(10),
                 onTap: () => openCalendarPicker(context, ref),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Flexible(
-                        child: Text(
-                          formatFriendlyDate(date, now: today),
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              formatFriendlyDate(date, now: today),
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.calendar_today_rounded,
+                            size: 14,
+                            color: colors.emerald,
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 6),
-                      Icon(
-                        Icons.calendar_today_rounded,
-                        size: 14,
-                        color: colors.emerald,
+                      const SizedBox(height: 2),
+                      Text(
+                        formatHijriDate(date),
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colors.mutedText,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
