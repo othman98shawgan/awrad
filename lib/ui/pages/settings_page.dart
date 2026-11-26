@@ -257,7 +257,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   title: const Text('Send Test Notification'),
                   subtitle: const Text('Verify daily reminder notification'),
-                  onTap: () {
+                  onTap: () async {
                     final today = normalizeDate(DateTime.now());
                     final tasks = ref
                         .read(awradTasksProvider)
@@ -266,9 +266,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     final remaining = tasks
                         .where((t) => log.statusFor(t.id) != AwradStatus.done)
                         .length;
-                    NotificationService.instance.sendTestNotification(
+                    final sent = await NotificationService.instance
+                        .sendTestNotification(
                       remainingAwradCount: remaining,
                     );
+                    if (!sent && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Notifications are disabled. Enable them in system settings.',
+                          ),
+                        ),
+                      );
+                    }
                   },
                 ),
                 const Divider(),

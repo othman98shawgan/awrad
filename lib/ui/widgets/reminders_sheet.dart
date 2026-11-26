@@ -27,7 +27,8 @@ class _RemindersSheet extends ConsumerStatefulWidget {
   ConsumerState<_RemindersSheet> createState() => _RemindersSheetState();
 }
 
-class _RemindersSheetState extends ConsumerState<_RemindersSheet> {
+class _RemindersSheetState extends ConsumerState<_RemindersSheet>
+    with WidgetsBindingObserver {
   bool _isEditingMode = false;
   int? _editingIndex;
   TimeOfDay _draftTime = const TimeOfDay(hour: 20, minute: 30);
@@ -37,7 +38,28 @@ class _RemindersSheetState extends ConsumerState<_RemindersSheet> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkPermission();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshPermissionStatus();
+    }
+  }
+
+  Future<void> _refreshPermissionStatus() async {
+    final granted = await NotificationService.instance.arePermissionsGranted();
+    if (mounted) {
+      setState(() => _hasPermission = granted);
+    }
   }
 
   Future<void> _checkPermission() async {
@@ -89,7 +111,13 @@ class _RemindersSheetState extends ConsumerState<_RemindersSheet> {
     } else {
       await notifier.addReminder(_draftTime, taskId: _draftTaskId);
       if (mounted) _closeEditor();
-      await NotificationService.instance.requestPermissions();
+      if (!_hasPermission) {
+        final granted =
+            await NotificationService.instance.requestPermissions();
+        if (mounted) {
+          setState(() => _hasPermission = granted);
+        }
+      }
       return;
     }
     if (mounted) _closeEditor();
