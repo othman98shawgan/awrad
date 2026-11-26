@@ -1,5 +1,5 @@
 name: awrad
-description: "A new Flutter project."
+description: "Awrad — Serene daily Islamic worship, dhikr, and prayer habit tracker."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 version: 1.0.0+1

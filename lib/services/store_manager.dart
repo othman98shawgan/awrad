@@ -21,7 +21,7 @@ class StorageManager {
       return prefs.setStringList(key, value);
     } else {
       if (kDebugMode) {
-        print('StorageManager: Unsupported value type ${value.runtimeType}');
+        debugPrint('StorageManager: Unsupported value type ${value.runtimeType}');
       }
       return false;
     }
