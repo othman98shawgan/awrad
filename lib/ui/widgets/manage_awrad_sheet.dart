@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,10 +20,41 @@ Future<void> showManageAwradSheet(BuildContext context) {
   );
 }
 
-class _ManageAwradSheet extends ConsumerWidget {
+class _ManageAwradSheet extends ConsumerStatefulWidget {
   const _ManageAwradSheet();
 
+  @override
+  ConsumerState<_ManageAwradSheet> createState() => _ManageAwradSheetState();
+}
+
+class _ManageAwradSheetState extends ConsumerState<_ManageAwradSheet> {
   static const _dayShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  AwradTask? _lastDeleted;
+  Timer? _undoTimer;
+
+  @override
+  void dispose() {
+    _undoTimer?.cancel();
+    super.dispose();
+  }
+
+  void _handleDelete(AwradTask task) {
+    ref.read(awradTasksProvider.notifier).deleteTask(task.id);
+    _undoTimer?.cancel();
+    setState(() => _lastDeleted = task);
+    _undoTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _lastDeleted = null);
+    });
+  }
+
+  void _handleUndo() {
+    final task = _lastDeleted;
+    if (task == null) return;
+    _undoTimer?.cancel();
+    ref.read(awradTasksProvider.notifier).restoreTask(task);
+    setState(() => _lastDeleted = null);
+  }
 
   String _scheduleLabel(AwradTask task) {
     if (task.repeatWeekdays.isEmpty) return 'Every day';
@@ -30,7 +63,7 @@ class _ManageAwradSheet extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final colors = context.awradColors;
     final theme = Theme.of(context);
     final tasks = ref.watch(awradTasksProvider);
@@ -120,16 +153,7 @@ class _ManageAwradSheet extends ConsumerWidget {
                                 color: theme.colorScheme.onErrorContainer,
                               ),
                             ),
-                            onDismissed: (_) {
-                              ref
-                                  .read(awradTasksProvider.notifier)
-                                  .deleteTask(task.id);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Deleted "${task.title}"'),
-                                ),
-                              );
-                            },
+                            onDismissed: (_) => _handleDelete(task),
                             child: Card(
                               child: ListTile(
                                 shape: RoundedRectangleBorder(
@@ -176,6 +200,45 @@ class _ManageAwradSheet extends ConsumerWidget {
                       ],
                     ),
             ),
+            if (_lastDeleted != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                child: Material(
+                  color: theme.colorScheme.inverseSurface,
+                  borderRadius: BorderRadius.circular(12),
+                  elevation: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Deleted "${_lastDeleted!.title}"',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onInverseSurface,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _handleUndo,
+                          child: Text(
+                            'Undo',
+                            style: TextStyle(
+                              color: theme.colorScheme.inversePrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         );
       },

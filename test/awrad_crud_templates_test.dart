@@ -136,5 +136,13 @@ void main() {
 
     expect(find.text('8 active · Tap to edit or drag to reorder'),
         findsOneWidget);
+    expect(find.text('Undo'), findsOneWidget);
+
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('9 active · Tap to edit or drag to reorder'),
+        findsOneWidget);
+    expect(find.text('Quran'), findsOneWidget);
   });
 }

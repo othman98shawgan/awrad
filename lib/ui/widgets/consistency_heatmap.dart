@@ -291,7 +291,15 @@ class _SelectedDayStrip extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
+                Text(
+                  formatHijriDate(summary.date),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colors.mutedText,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 3),
                 Text(
                   '$awradText · ${summary.prayersDone}/5 Prayers (${summary.prayersInMasjid} Masjid)',
                   style: theme.textTheme.bodySmall?.copyWith(

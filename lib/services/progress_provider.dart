@@ -12,6 +12,12 @@ final progressAnchorDateProvider = StateProvider<DateTime>(
   (ref) => normalizeDate(DateTime.now()),
 );
 
+/// Whether the Progress tab is currently in Monthly (vs Weekly) mode.
+final progressIsMonthlyProvider = StateProvider<bool>((ref) => true);
+
+/// Whether the Progress tab's Monthly view uses the Hijri calendar.
+final progressHijriCalendarProvider = StateProvider<bool>((ref) => false);
+
 /// Computes the current consecutive-day streak ending at [today] (or yesterday
 /// if [today] has no progress yet) where `awradScore > 0`.
 int computeAwradStreak(
@@ -31,6 +37,55 @@ int computeAwradStreak(
   while (true) {
     final summary = byDate[cursor];
     if (summary == null || summary.awradScore <= 0) break;
+    streak++;
+    cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
+  }
+  return streak;
+}
+
+/// Computes the longest consecutive-day Awrad streak in [summaries].
+int computeBestAwradStreak(List<DailyProgressSummary> summaries) {
+  if (summaries.isEmpty) return 0;
+  final sorted = [...summaries]..sort((a, b) => a.date.compareTo(b.date));
+  var best = 0;
+  var current = 0;
+  DateTime? prevDate;
+  for (final s in sorted) {
+    if (s.awradScore <= 0) {
+      current = 0;
+      prevDate = s.date;
+      continue;
+    }
+    if (prevDate != null && s.date.difference(prevDate).inDays == 1) {
+      current++;
+    } else {
+      current = 1;
+    }
+    if (current > best) best = current;
+    prevDate = s.date;
+  }
+  return best;
+}
+
+/// Computes the current consecutive-day streak ending at [today] (or yesterday
+/// if [today] is not yet complete) where all 5 Fard prayers are marked done.
+int computePrayerStreak(
+  List<DailyProgressSummary> summaries, {
+  DateTime? now,
+}) {
+  if (summaries.isEmpty) return 0;
+  final today = normalizeDate(now ?? DateTime.now());
+  final byDate = {for (final s in summaries) s.date: s};
+
+  var cursor = today;
+  if ((byDate[cursor]?.prayersDone ?? 0) < 5) {
+    cursor = DateTime(today.year, today.month, today.day - 1);
+  }
+
+  var streak = 0;
+  while (true) {
+    final summary = byDate[cursor];
+    if (summary == null || summary.prayersDone < 5) break;
     streak++;
     cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
   }

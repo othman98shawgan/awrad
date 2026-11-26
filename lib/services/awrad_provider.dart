@@ -78,6 +78,16 @@ class AwradTasksNotifier extends StateNotifier<List<AwradTask>> {
     await _repo.saveTasks(state);
   }
 
+  /// Restores a previously deleted [AwradTask] at its original [sortOrder].
+  Future<void> restoreTask(AwradTask task) async {
+    if (state.any((t) => t.id == task.id)) return;
+    final updated = [...state];
+    final insertAt = task.sortOrder.clamp(0, updated.length);
+    updated.insert(insertAt, task);
+    state = _reindex(updated);
+    await _repo.saveTasks(state);
+  }
+
   Future<void> reorderTasks(int oldIndex, int newIndex) async {
     if (oldIndex < 0 || oldIndex >= state.length) return;
     var targetIndex = newIndex;

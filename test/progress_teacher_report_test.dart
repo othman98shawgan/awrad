@@ -1,4 +1,5 @@
 import 'package:awrad/main.dart';
+import 'package:awrad/services/date_utils.dart';
 import 'package:awrad/services/progress_provider.dart';
 import 'package:awrad/ui/widgets/teacher_report_sheet.dart';
 import 'package:flutter/material.dart';
@@ -135,6 +136,18 @@ void main() {
     expect(find.text('Consistency Heatmap'), findsOneWidget);
     expect(find.text('Sun'), findsOneWidget);
 
+    // Switch Monthly view to Hijri calendar and verify Hijri month header
+    expect(find.byTooltip('Switch to Hijri month'), findsOneWidget);
+    await tester.tap(find.byTooltip('Switch to Hijri month'));
+    await tester.pumpAndSettle();
+    final todayHijri = toHijriDate(DateTime.now());
+    expect(
+      find.text('${todayHijri.monthName} ${todayHijri.year} AH'),
+      findsOneWidget,
+    );
+    await tester.tap(find.byTooltip('Switch to Gregorian month'));
+    await tester.pumpAndSettle();
+
     // Switch to Weekly and verify Sunday is still the first day label
     await tester.tap(find.text('Weekly'));
     await tester.pumpAndSettle();
@@ -205,6 +218,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('View Day →'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('View Day →'));
     await tester.pumpAndSettle();
 
