@@ -8,6 +8,7 @@ import 'services/awrad_provider.dart';
 import 'services/date_utils.dart';
 import 'services/notification_service.dart';
 import 'services/progress_provider.dart';
+import 'services/selected_date_provider.dart';
 import 'services/settings_provider.dart';
 import 'ui/pages/home_page.dart';
 import 'ui/pages/prayer_progress_page.dart';
@@ -33,11 +34,36 @@ class OradApp extends ConsumerStatefulWidget {
   ConsumerState<OradApp> createState() => _OradAppState();
 }
 
-class _OradAppState extends ConsumerState<OradApp> {
+class _OradAppState extends ConsumerState<OradApp> with WidgetsBindingObserver {
+  late DateTime _lastActiveDay;
+
   @override
   void initState() {
     super.initState();
+    _lastActiveDay = normalizeDate(DateTime.now());
+    WidgetsBinding.instance.addObserver(this);
     NotificationService.instance.init();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final nowDay = normalizeDate(DateTime.now());
+      if (nowDay != _lastActiveDay) {
+        final prevDay = _lastActiveDay;
+        _lastActiveDay = nowDay;
+        if (ref.read(selectedDateProvider) == prevDay) {
+          ref.read(selectedDateProvider.notifier).selectDate(nowDay);
+        }
+        _syncReminder();
+      }
+    }
   }
 
   void _syncReminder() {

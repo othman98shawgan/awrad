@@ -121,7 +121,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Saved on this device · Cloud sync & accounts coming soon',
+                        'Stored locally on this device',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colors.mutedText,
                         ),

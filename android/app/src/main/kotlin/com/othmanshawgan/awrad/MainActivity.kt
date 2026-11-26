@@ -1,4 +1,4 @@
-package com.example.awrad
+package com.othmanshawgan.awrad
 
 import io.flutter.embedding.android.FlutterActivity
 

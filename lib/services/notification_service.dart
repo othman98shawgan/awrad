@@ -59,7 +59,7 @@ class NotificationService {
       final tzInfo = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
 
-      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const androidInit = AndroidInitializationSettings('ic_stat_awrad');
       const darwinInit = DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
@@ -76,7 +76,7 @@ class NotificationService {
       _initialized = true;
     } catch (e) {
       if (kDebugMode) {
-        print('NotificationService init skipped: $e');
+        debugPrint('NotificationService init skipped: $e');
       }
     }
   }
@@ -213,7 +213,7 @@ class NotificationService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('NotificationService sync failed: $e');
+        debugPrint('NotificationService sync failed: $e');
       }
     }
   }
