@@ -1,0 +1,50 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="oasisBg" x1="128" y1="64" x2="896" y2="960" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#119272" />
+      <stop offset="52%" stop-color="#0D7A5F" />
+      <stop offset="100%" stop-color="#074B3A" />
+    </linearGradient>
+    <radialGradient id="oasisGlow" cx="50%" cy="42%" r="55%">
+      <stop offset="0%" stop-color="#34D399" stop-opacity="0.22" />
+      <stop offset="100%" stop-color="#074B3A" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="starGoldGlow" x1="80" y1="40" x2="80" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FDE68A" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+  </defs>
+
+  <!-- Full-bleed opaque Serene Oasis emerald background -->
+  <rect width="1024" height="1024" fill="url(#oasisBg)" />
+  <rect width="1024" height="1024" fill="url(#oasisGlow)" />
+
+  <!-- Centered Oasis Star (Rub el Hizb) mark -->
+  <g transform="translate(112, 112) scale(5)">
+    <!-- Subtle background geometric harmony circles -->
+    <circle cx="80" cy="80" r="54" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="1.2" stroke-dasharray="3 3" />
+    <circle cx="80" cy="80" r="64" stroke="#FFFFFF" stroke-opacity="0.09" stroke-width="1" />
+
+    <!-- Outer Rub el Hizb (Two interlocking squares) -->
+    <rect x="42" y="42" width="76" height="76" rx="4" fill="none" stroke="#FFFFFF" stroke-width="3.6" stroke-linejoin="round" />
+    <rect x="42" y="42" width="76" height="76" rx="4" fill="none" stroke="#FFFFFF" stroke-width="3.6" stroke-linejoin="round" transform="rotate(45 80 80)" />
+
+    <!-- Concentric 8-point faceted diamond fill -->
+    <path d="M80 49 L88 72 L111 80 L88 88 L80 111 L72 88 L49 80 L72 72 Z" fill="#FFFFFF" fill-opacity="0.16" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="1.5" stroke-linejoin="round" />
+
+    <!-- Central Amber Gold Core Star -->
+    <circle cx="80" cy="80" r="14" fill="#0D7A5F" stroke="url(#starGoldGlow)" stroke-width="2.6" />
+    <path d="M80 68 L83 77 L92 80 L83 83 L80 92 L77 83 L68 80 L77 77 Z" fill="url(#starGoldGlow)" />
+    <circle cx="80" cy="80" r="3.5" fill="#FFFFFF" />
+
+    <!-- 8 Accent Jewel Dots on Star Tips -->
+    <circle cx="80" cy="30" r="2.3" fill="#FBBF24" opacity="0.95" />
+    <circle cx="80" cy="130" r="2.3" fill="#FBBF24" opacity="0.95" />
+    <circle cx="30" cy="80" r="2.3" fill="#FBBF24" opacity="0.95" />
+    <circle cx="130" cy="80" r="2.3" fill="#FBBF24" opacity="0.95" />
+    <circle cx="45" cy="45" r="2.3" fill="#FBBF24" opacity="0.95" />
+    <circle cx="115" cy="45" r="2.3" fill="#FBBF24" opacity="0.95" />
+    <circle cx="45" cy="115" r="2.3" fill="#FBBF24" opacity="0.95" />
+    <circle cx="115" cy="115" r="2.3" fill="#FBBF24" opacity="0.95" />
+  </g>
+</svg>

@@ -8,6 +8,7 @@ import '../../services/date_utils.dart';
 import '../../services/progress_provider.dart';
 import '../../services/selected_date_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/awrad_logo.dart';
 import '../widgets/awrad_task_card.dart';
 import '../widgets/awrad_task_sheet.dart';
 import '../widgets/date_switcher_bar.dart';
@@ -219,12 +220,15 @@ class _DailyAwradPage extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.checklist_rounded,
-                    size: 44,
-                    color: colors.mutedText,
-                  ),
-                  const SizedBox(height: 12),
+                  if (allTasks.isEmpty)
+                    const AwradLogo(size: 64)
+                  else
+                    Icon(
+                      Icons.checklist_rounded,
+                      size: 44,
+                      color: colors.mutedText,
+                    ),
+                  const SizedBox(height: 14),
                   Text(
                     allTasks.isEmpty
                         ? 'Your Awrad list is empty'
