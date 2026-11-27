@@ -350,7 +350,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   const AwradLogo(size: 48),
                   const SizedBox(height: 8),
                   Text(
-                    'Awrad v1.0.0',
+                    'Awrad v1.0.1',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: colors.mutedText,
                     ),
