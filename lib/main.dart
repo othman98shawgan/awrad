@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -133,7 +134,7 @@ class _OradAppState extends ConsumerState<OradApp> with WidgetsBindingObserver {
     });
 
     return MaterialApp(
-      title: 'Awrad',
+      title: kDebugMode ? '[Dev] Awrad' : 'Awrad',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
