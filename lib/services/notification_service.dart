@@ -23,6 +23,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
+  Future<void>? _initFuture;
 
   /// Pure helper for computing the next trigger timestamp.
   /// If [skipToday] is true (e.g., all today's tasks are already done),
@@ -53,11 +54,30 @@ class NotificationService {
 
   Future<void> init() async {
     if (kIsWeb || _initialized) return;
+    if (_initFuture != null) return _initFuture;
 
+    _initFuture = _doInit();
+    try {
+      await _initFuture;
+    } finally {
+      if (!_initialized) {
+        _initFuture = null;
+      }
+    }
+  }
+
+  Future<void> _doInit() async {
     try {
       tz.initializeTimeZones();
-      final tzInfo = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
+      try {
+        final tzInfo = await FlutterTimezone.getLocalTimezone();
+        tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
+      } catch (e) {
+        tz.setLocalLocation(tz.UTC);
+        if (kDebugMode) {
+          debugPrint('NotificationService timezone fallback to UTC: $e');
+        }
+      }
 
       const androidInit = AndroidInitializationSettings('ic_stat_awrad');
       const darwinInit = DarwinInitializationSettings(
@@ -73,6 +93,18 @@ class NotificationService {
       );
 
       await _plugin.initialize(settings: initSettings);
+
+      final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      await androidImpl?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          channelId,
+          channelName,
+          description: 'Daily reminders for your remaining Awrad tasks',
+          importance: Importance.high,
+        ),
+      );
+
       _initialized = true;
     } catch (e) {
       if (kDebugMode) {
@@ -84,24 +116,24 @@ class NotificationService {
   Future<bool> arePermissionsGranted() async {
     if (kIsWeb) return true;
     if (!_initialized) await init();
-    if (!_initialized) return true;
+    if (!_initialized) return false;
 
     try {
       final androidImpl = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
       if (androidImpl != null) {
-        return await androidImpl.areNotificationsEnabled() ?? true;
+        return await androidImpl.areNotificationsEnabled() ?? false;
       }
 
       final iosImpl = _plugin.resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin>();
       if (iosImpl != null) {
         final perms = await iosImpl.checkPermissions();
-        return perms?.isEnabled ?? true;
+        return perms?.isEnabled ?? false;
       }
       return true;
     } catch (_) {
-      return true;
+      return false;
     }
   }
 
@@ -113,19 +145,22 @@ class NotificationService {
     try {
       final androidImpl = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
-      final androidGranted =
-          await androidImpl?.requestNotificationsPermission();
-      await androidImpl?.requestExactAlarmsPermission();
+      if (androidImpl != null) {
+        return await androidImpl.requestNotificationsPermission() ?? false;
+      }
 
       final iosImpl = _plugin.resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin>();
-      final iosGranted = await iosImpl?.requestPermissions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      if (iosImpl != null) {
+        return await iosImpl.requestPermissions(
+              alert: true,
+              badge: true,
+              sound: true,
+            ) ??
+            false;
+      }
 
-      return (androidGranted ?? true) && (iosGranted ?? true);
+      return true;
     } catch (_) {
       return false;
     }
@@ -156,7 +191,9 @@ class NotificationService {
     Map<String, String> taskTitlesById = const {},
     Set<String> doneTaskIds = const {},
   }) async {
-    if (kIsWeb || !_initialized) return;
+    if (kIsWeb) return;
+    if (!_initialized) await init();
+    if (!_initialized) return;
 
     try {
       for (int i = 0; i < maxRemindersToClear; i++) {
@@ -218,20 +255,34 @@ class NotificationService {
     }
   }
 
-  Future<void> sendTestNotification({required int remainingAwradCount}) async {
-    if (kIsWeb) return;
+  Future<bool> sendTestNotification({required int remainingAwradCount}) async {
+    if (kIsWeb) return false;
     if (!_initialized) await init();
-    if (!_initialized) return;
+    if (!_initialized) return false;
+
+    var granted = await arePermissionsGranted();
+    if (!granted) {
+      granted = await requestPermissions();
+    }
+    if (!granted) return false;
 
     final body = remainingAwradCount > 0
         ? 'You have $remainingAwradCount Awrad remaining today. Tap to open.'
         : 'All Awrad completed for today!';
 
-    await _plugin.show(
-      id: testNotificationId,
-      title: 'Daily Awrad Reminder',
-      body: body,
-      notificationDetails: _buildDetails(),
-    );
+    try {
+      await _plugin.show(
+        id: testNotificationId,
+        title: 'Daily Awrad Reminder',
+        body: body,
+        notificationDetails: _buildDetails(),
+      );
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('NotificationService test notification failed: $e');
+      }
+      return false;
+    }
   }
 }

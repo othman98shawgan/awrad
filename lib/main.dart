@@ -42,7 +42,15 @@ class _OradAppState extends ConsumerState<OradApp> with WidgetsBindingObserver {
     super.initState();
     _lastActiveDay = normalizeDate(DateTime.now());
     WidgetsBinding.instance.addObserver(this);
-    NotificationService.instance.init();
+    _initNotifications();
+  }
+
+  Future<void> _initNotifications() async {
+    await NotificationService.instance.init();
+    await NotificationService.instance.requestPermissions();
+    if (mounted) {
+      _syncReminder();
+    }
   }
 
   @override
@@ -61,8 +69,8 @@ class _OradAppState extends ConsumerState<OradApp> with WidgetsBindingObserver {
         if (ref.read(selectedDateProvider) == prevDay) {
           ref.read(selectedDateProvider.notifier).selectDate(nowDay);
         }
-        _syncReminder();
       }
+      _syncReminder();
     }
   }
 
