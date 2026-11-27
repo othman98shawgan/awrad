@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:awrad/models/awrad_backup.dart';
@@ -277,6 +278,27 @@ void main() {
       expect(loaded, isNotNull);
       expect(loaded!.tasks.first.title, 'First');
     });
+
+    test('buildExportPayload generates valid JSON bytes and filenames', () async {
+      await awradRepo.saveTasks([makeTask('t1', 'Morning Adhkar')]);
+
+      final templatePayload =
+          await backupService.buildExportPayload(BackupType.awradOnly);
+      expect(templatePayload.fileName, startsWith('awrad-template-'));
+      expect(templatePayload.fileName, endsWith('.json'));
+      final parsedTemplate = AwradBackup.fromJson(
+        utf8.decode(templatePayload.bytes),
+      );
+      expect(parsedTemplate.type, BackupType.awradOnly);
+      expect(parsedTemplate.tasks.first.title, 'Morning Adhkar');
+
+      final fullPayload =
+          await backupService.buildExportPayload(BackupType.fullBackup);
+      expect(fullPayload.fileName, startsWith('awrad-backup-'));
+      expect(fullPayload.fileName, endsWith('.json'));
+      final parsedFull = AwradBackup.fromJson(utf8.decode(fullPayload.bytes));
+      expect(parsedFull.type, BackupType.fullBackup);
+    });
   });
 
   group('Backup & Restore UI', () {
@@ -308,6 +330,8 @@ void main() {
       await tester.tap(find.text('Save / Export Backup'));
       await tester.pumpAndSettle();
 
+      expect(find.text('Save to Files'), findsOneWidget);
+      expect(find.text('Share'), findsOneWidget);
       expect(find.text('Awrad List Only'), findsOneWidget);
       expect(find.text('Full Backup (Awrad & Progress)'), findsOneWidget);
     });

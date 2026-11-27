@@ -42,6 +42,8 @@ Future<void> showExportBackupSheet(BuildContext context) {
   );
 }
 
+enum _ExportDestination { saveToFiles, share }
+
 class _ExportBackupSheet extends ConsumerStatefulWidget {
   const _ExportBackupSheet();
 
@@ -50,6 +52,7 @@ class _ExportBackupSheet extends ConsumerStatefulWidget {
 }
 
 class _ExportBackupSheetState extends ConsumerState<_ExportBackupSheet> {
+  _ExportDestination _destination = _ExportDestination.saveToFiles;
   BackupType? _exportingType;
 
   Future<void> _export(BackupType type) async {
@@ -58,6 +61,29 @@ class _ExportBackupSheetState extends ConsumerState<_ExportBackupSheet> {
 
     try {
       final service = ref.read(backupServiceProvider);
+
+      if (_destination == _ExportDestination.saveToFiles) {
+        final payload = await service.buildExportPayload(type);
+        final savedUri = await FilePicker.saveFile(
+          fileName: payload.fileName,
+          bytes: payload.bytes,
+          mimeType: 'application/json',
+          dialogTitle: 'Save Awrad Backup',
+        );
+        if (!mounted) return;
+        if (savedUri == null) {
+          setState(() => _exportingType = null);
+          return;
+        }
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(content: Text('Saved ${payload.fileName}')),
+          );
+        return;
+      }
+
       final file = await service.writeExportFile(type);
       final subject = type == BackupType.awradOnly
           ? 'Awrad Template'
@@ -104,12 +130,35 @@ class _ExportBackupSheetState extends ConsumerState<_ExportBackupSheet> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Choose whether to save just your Awrad list as a template, or include all of your tracked progress.',
+            'Save directly to your device Files / Downloads, or share with a friend.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: colors.mutedText,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<_ExportDestination>(
+              segments: const [
+                ButtonSegment(
+                  value: _ExportDestination.saveToFiles,
+                  icon: Icon(Icons.folder_outlined, size: 18),
+                  label: Text('Save to Files'),
+                ),
+                ButtonSegment(
+                  value: _ExportDestination.share,
+                  icon: Icon(Icons.ios_share_rounded, size: 18),
+                  label: Text('Share'),
+                ),
+              ],
+              selected: {_destination},
+              onSelectionChanged: isBusy
+                  ? null
+                  : (selection) =>
+                      setState(() => _destination = selection.first),
+            ),
+          ),
+          const SizedBox(height: 14),
           _ExportOptionCard(
             icon: Icons.playlist_add_check_rounded,
             title: 'Awrad List Only',

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -81,15 +82,25 @@ class BackupService {
         : 'awrad-backup-$dateKey.json';
   }
 
+  /// Builds a UTF-8 JSON export payload and suggested filename for [type].
+  Future<({String fileName, Uint8List bytes})> buildExportPayload(
+    BackupType type,
+  ) async {
+    final backup = await buildBackup(type: type);
+    final fileName = suggestedFileName(type);
+    final bytes = Uint8List.fromList(utf8.encode(backup.toJson(pretty: true)));
+    return (fileName: fileName, bytes: bytes);
+  }
+
   /// Writes a shareable JSON export file to a temporary directory.
   Future<File> writeExportFile(BackupType type) async {
-    final backup = await buildBackup(type: type);
+    final payload = await buildExportPayload(type);
     final dir = await _exportDirProvider();
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
-    final file = File('${dir.path}/${suggestedFileName(type)}');
-    await file.writeAsString(backup.toJson(pretty: true), flush: true);
+    final file = File('${dir.path}/${payload.fileName}');
+    await file.writeAsBytes(payload.bytes, flush: true);
     return file;
   }
 
