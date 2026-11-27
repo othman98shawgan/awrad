@@ -33,6 +33,11 @@ class AwradTasksNotifier extends StateNotifier<List<AwradTask>> {
     return _loadFuture ??= _performLoad();
   }
 
+  Future<void> reload() {
+    _loadFuture = _performLoad();
+    return _loadFuture!;
+  }
+
   Future<void> _performLoad() async {
     final loaded = await _repo.loadTasks();
     if (!mounted) return;

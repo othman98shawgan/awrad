@@ -19,6 +19,9 @@ abstract class PrayerRepository {
     DateTime start,
     DateTime end,
   );
+  Future<Map<String, DailyPrayerLog>> loadAllLogs();
+  Future<void> replaceAllLogs(Map<String, DailyPrayerLog> logs);
+  Future<void> mergeLogs(Map<String, DailyPrayerLog> logs);
 }
 
 /// Local [SharedPreferences]-backed implementation of [PrayerRepository].
@@ -145,5 +148,64 @@ class LocalPrayerRepository implements PrayerRepository {
       _logCache[dateKey] = null;
     }
     return result;
+  }
+
+  @override
+  Future<Map<String, DailyPrayerLog>> loadAllLogs() async {
+    final keys = await StorageManager.getKeys();
+    final prayerKeys = keys.where((k) => k.startsWith('prayers_')).toList()..sort();
+    final result = <String, DailyPrayerLog>{};
+    for (final key in prayerKeys) {
+      final dateKey = key.substring('prayers_'.length);
+      if (parseDateKey(dateKey) == null) continue;
+      final cached = _logCache[dateKey];
+      if (cached != null) {
+        result[dateKey] = cached;
+        continue;
+      }
+      final raw = await StorageManager.readData(key);
+      if (raw is String && raw.isNotEmpty) {
+        try {
+          final list = jsonDecode(raw) as List<dynamic>;
+          final items = list
+              .map((e) => PrayerItem.fromMap(Map<String, dynamic>.from(e as Map)))
+              .toList();
+          if (items.isNotEmpty) {
+            final log = DailyPrayerLog(dateKey: dateKey, prayers: items);
+            _logCache[dateKey] = log;
+            result[dateKey] = log;
+          }
+        } catch (_) {
+          // Ignore corrupted day entry.
+        }
+      }
+    }
+    return result;
+  }
+
+  @override
+  Future<void> replaceAllLogs(Map<String, DailyPrayerLog> logs) async {
+    final keys = await StorageManager.getKeys();
+    for (final key in keys) {
+      if (key.startsWith('prayers_')) {
+        await StorageManager.deleteData(key);
+      }
+    }
+    _logCache.clear();
+    for (final log in logs.values) {
+      await saveLog(log);
+    }
+  }
+
+  @override
+  Future<void> mergeLogs(Map<String, DailyPrayerLog> logs) async {
+    for (final entry in logs.entries) {
+      final date = parseDateKey(entry.key);
+      if (date == null) continue;
+      final existingRaw = await StorageManager.readData(_keyFor(entry.key));
+      if (existingRaw is! String || existingRaw.isEmpty) {
+        await saveLog(entry.value);
+      }
+    }
   }
 }

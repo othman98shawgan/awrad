@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/awrad_status.dart';
 import '../../services/awrad_provider.dart';
+import '../../services/backup_provider.dart';
 import '../../services/date_utils.dart';
 import '../../services/notification_service.dart';
 import '../../services/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/awrad_logo.dart';
+import '../widgets/backup_restore_sheet.dart';
 import '../widgets/manage_awrad_sheet.dart';
 import '../widgets/prayer_sunnah_sheet.dart';
 import '../widgets/reminders_sheet.dart';
@@ -229,6 +231,47 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => showRemindersSheet(context),
+          ),
+        ),
+        const SizedBox(height: 18),
+        const _SectionHeader(title: 'BACKUP & RESTORE'),
+        const SizedBox(height: 8),
+        Card(
+          child: Column(
+            children: [
+              ListTile(
+                leading: Icon(Icons.ios_share_rounded, color: colors.emerald),
+                title: const Text('Save / Export Backup'),
+                subtitle: const Text('Save Awrad only or full progress'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => showExportBackupSheet(context),
+              ),
+              const Divider(),
+              ListTile(
+                leading: Icon(Icons.file_open_outlined, color: colors.emerald),
+                title: const Text('Import from File'),
+                subtitle: const Text('Restore a backup or friend’s template'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => pickAndImportBackup(context, ref),
+              ),
+              const Divider(),
+              Consumer(
+                builder: (context, ref, _) {
+                  final autoBackupAsync = ref.watch(autoBackupInfoProvider);
+                  final info = autoBackupAsync.valueOrNull;
+                  final subtitle = info == null
+                      ? 'Saves automatically as you track'
+                      : 'Last saved: ${formatBackupTimestamp(info.createdAt)}';
+                  return ListTile(
+                    leading: Icon(Icons.history_rounded, color: colors.emerald),
+                    title: const Text('Local Auto-Backup'),
+                    subtitle: Text(subtitle),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => showAutoBackupDialog(context, ref, info),
+                  );
+                },
+              ),
+            ],
           ),
         ),
         if (settings.developerModeEnabled) ...[

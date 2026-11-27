@@ -21,7 +21,7 @@ When preparing a Pull Request reminder, always format the PR Description inside 
 - [x] **Task 5 (`feat/progress-heatmap-teacher-report`)**: Progress tab with GitHub-style heatmap (`#14`–`#17`), weekly/monthly toggle, tap-day view, and shareable Teacher Report.
 - [x] **Task 6 (`feat/settings-and-reminders`)**: Settings tab with template browser entry, manage awrad, wakelock toggle, daily notification reminders (`#29`–`#32`), and Guest/Cloud Sync prep.
 - [x] **Task 7 (`feat/hijri-date-progress-enhancements`)**: Hijri date display in `DateSwitcherBar`, streak counters/milestones on the Progress tab, and Undo support for swipe-to-delete.
-- [ ] **Task 8 (`feat/backup-and-restore`)**: Local JSON export/import backup and restore for Awrad tasks, daily logs, and prayer history.
+- [x] **Task 8 (`feat/backup-and-restore`)**: Local JSON export/import backup and restore for Awrad tasks, daily logs, and prayer history.
 - [x] **Task 9 (`chore/store-release-prep`)**: v1.0.0 store release prep — `com.othmanshawgan.awrad` bundle/app ID, Android release signing config, branded splash screens, monochrome notification icon (`ic_stat_awrad`), iOS portrait lock, midnight rollover, and Store-safe copy.
 - [ ] **Task 10 (`feat/arabic-l10n-rtl`)**: Arabic localization & RTL (`l10n`) — English/Arabic translations, full RTL layout, localized templates, and language selector in Settings.
 - [ ] **Task 11 (`feat/cloud-sync-accounts`)**: Cloud Sync & Accounts — wire sync-ready repositories to Firebase/Supabase and replace the Guest Mode placeholder in Settings.
