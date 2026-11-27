@@ -97,6 +97,10 @@ class _HomePageState extends ConsumerState<HomePage> {
             );
           },
         ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: _FixedDailyProgressHeader(),
+        ),
         Expanded(
           child: PageView.builder(
             controller: _controller,
@@ -128,6 +132,30 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 }
 
+class _FixedDailyProgressHeader extends ConsumerWidget {
+  const _FixedDailyProgressHeader();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedDate = ref.watch(selectedDateProvider);
+    final allTasks = ref.watch(awradTasksProvider);
+    final tasks = allTasks.where((t) => t.appliesTo(selectedDate)).toList();
+    final log = ref.watch(dailyAwradLogProvider(selectedDate));
+
+    final doneCount =
+        tasks.where((t) => log.statusFor(t.id) == AwradStatus.done).length;
+    final halfCount =
+        tasks.where((t) => log.statusFor(t.id) == AwradStatus.halfDone).length;
+
+    return _DailyProgressCard(
+      pageDate: selectedDate,
+      totalCount: tasks.length,
+      doneCount: doneCount,
+      halfCount: halfCount,
+    );
+  }
+}
+
 class _DailyAwradPage extends ConsumerWidget {
   final DateTime pageDate;
   final _TaskFilter filter;
@@ -149,8 +177,6 @@ class _DailyAwradPage extends ConsumerWidget {
 
     final doneCount =
         tasks.where((t) => log.statusFor(t.id) == AwradStatus.done).length;
-    final halfCount =
-        tasks.where((t) => log.statusFor(t.id) == AwradStatus.halfDone).length;
     final pendingCount = tasks.length - doneCount;
 
     final visibleTasks = switch (filter) {
@@ -166,17 +192,6 @@ class _DailyAwradPage extends ConsumerWidget {
     return CustomScrollView(
       physics: const ClampingScrollPhysics(),
       slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          sliver: SliverToBoxAdapter(
-            child: _DailyProgressCard(
-              pageDate: pageDate,
-              totalCount: tasks.length,
-              doneCount: doneCount,
-              halfCount: halfCount,
-            ),
-          ),
-        ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
           sliver: SliverToBoxAdapter(
