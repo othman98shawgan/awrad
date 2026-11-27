@@ -53,7 +53,7 @@ android {
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
-        manifestPlaceholders = [appName: "Awrad"]
+        manifestPlaceholders += [appName: "Awrad"]
     }
 
     signingConfigs {
@@ -69,7 +69,7 @@ android {
 
     buildTypes {
         debug {
-            manifestPlaceholders = [appName: "[Dev] Awrad"]
+            manifestPlaceholders += [appName: "[Dev] Awrad"]
         }
         release {
             signingConfig keystorePropertiesFile.exists()
