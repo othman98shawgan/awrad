@@ -53,6 +53,7 @@ android {
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
+        manifestPlaceholders += [appName: "Awrad"]
     }
 
     signingConfigs {
@@ -67,10 +68,19 @@ android {
     }
 
     buildTypes {
+        debug {
+            manifestPlaceholders += [appName: "[Dev] Awrad"]
+        }
         release {
             signingConfig keystorePropertiesFile.exists()
                 ? signingConfigs.release
                 : signingConfigs.debug
+        }
+    }
+
+    androidComponents {
+        onVariants(selector().withBuildType("debug")) { variant ->
+            variant.applicationId.set("com.example.awrad")
         }
     }
 }
