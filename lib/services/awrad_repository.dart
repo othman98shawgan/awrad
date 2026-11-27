@@ -16,6 +16,9 @@ abstract class AwradRepository {
   Future<DailyAwradLog> loadLog(DateTime date);
   Future<void> saveLog(DailyAwradLog log);
   Future<Map<String, DailyAwradLog>> loadLogsInRange(DateTime start, DateTime end);
+  Future<Map<String, DailyAwradLog>> loadAllLogs();
+  Future<void> replaceAllLogs(Map<String, DailyAwradLog> logs);
+  Future<void> mergeLogs(Map<String, DailyAwradLog> logs);
 }
 
 /// Local [SharedPreferences]-backed implementation of [AwradRepository].
@@ -43,12 +46,16 @@ class LocalAwradRepository implements AwradRepository {
 
     final raw = await StorageManager.readData(_tasksKey);
     if (raw is String && raw.isNotEmpty) {
-      final decoded = jsonDecode(raw) as List<dynamic>;
-      final tasks = decoded
-          .map((e) => AwradTask.fromMap(Map<String, dynamic>.from(e as Map)))
-          .toList()
-        ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-      return tasks;
+      try {
+        final decoded = jsonDecode(raw) as List<dynamic>;
+        final tasks = decoded
+            .map((e) => AwradTask.fromMap(Map<String, dynamic>.from(e as Map)))
+            .toList()
+          ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+        return tasks;
+      } catch (_) {
+        // Corrupted JSON falls through to empty list; auto-backup recovery handles it.
+      }
     }
 
     // First-time users start with an empty Awrad list so they can choose a template or add their own.
@@ -117,6 +124,81 @@ class LocalAwradRepository implements AwradRepository {
       }
     }
     return result;
+  }
+
+  @override
+  Future<Map<String, DailyAwradLog>> loadAllLogs() async {
+    await _migrateLegacyDataIfNeeded();
+
+    final keys = await StorageManager.getKeys();
+    final logKeys = keys.where((k) => k.startsWith(_logPrefix)).toList()..sort();
+    final result = <String, DailyAwradLog>{};
+    for (final key in logKeys) {
+      final dateKey = key.substring(_logPrefix.length);
+      if (parseDateKey(dateKey) == null) continue;
+      final cached = _logCache[dateKey];
+      if (cached != null) {
+        if (cached.entries.isNotEmpty) {
+          result[dateKey] = cached;
+        }
+        continue;
+      }
+      final raw = await StorageManager.readData(key);
+      if (raw is String && raw.isNotEmpty) {
+        try {
+          final map = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+          final parsed = DailyAwradLog.fromMap(map);
+          _logCache[dateKey] = parsed;
+          if (parsed.entries.isNotEmpty) {
+            result[dateKey] = parsed;
+          }
+        } catch (_) {
+          // Ignore corrupted log entry.
+        }
+      }
+    }
+    return result;
+  }
+
+  @override
+  Future<void> replaceAllLogs(Map<String, DailyAwradLog> logs) async {
+    final keys = await StorageManager.getKeys();
+    for (final key in keys) {
+      if (key.startsWith(_logPrefix)) {
+        await StorageManager.deleteData(key);
+      }
+    }
+    _logCache.clear();
+    for (final log in logs.values) {
+      if (log.entries.isNotEmpty) {
+        await saveLog(log);
+      }
+    }
+  }
+
+  @override
+  Future<void> mergeLogs(Map<String, DailyAwradLog> logs) async {
+    await _migrateLegacyDataIfNeeded();
+    for (final entry in logs.entries) {
+      final date = parseDateKey(entry.key);
+      if (date == null || entry.value.entries.isEmpty) continue;
+      final existing = await loadLog(date);
+      final mergedEntries = Map<String, AwradTaskEntry>.from(existing.entries);
+      var changed = false;
+      for (final taskEntry in entry.value.entries.entries) {
+        final current = mergedEntries[taskEntry.key];
+        if (current == null ||
+            taskEntry.value.updatedAt.isAfter(current.updatedAt)) {
+          mergedEntries[taskEntry.key] = taskEntry.value;
+          changed = true;
+        }
+      }
+      if (changed) {
+        await saveLog(
+          DailyAwradLog(dateKey: existing.dateKey, entries: mergedEntries),
+        );
+      }
+    }
   }
 
   /// Converts an [AwradTemplate] into persisted [AwradTask] instances.

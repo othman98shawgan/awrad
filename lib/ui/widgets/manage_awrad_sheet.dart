@@ -7,6 +7,7 @@ import '../../models/awrad_task.dart';
 import '../../services/awrad_provider.dart';
 import '../theme/app_theme.dart';
 import 'awrad_task_sheet.dart';
+import 'backup_restore_sheet.dart';
 
 /// Opens a bottom sheet listing all active Awrad tasks (including weekday-only
 /// ones) so users can add, edit, delete, or reorder their full routine in one place.
@@ -100,6 +101,12 @@ class _ManageAwradSheetState extends ConsumerState<_ManageAwradSheet> {
                       ],
                     ),
                   ),
+                  IconButton(
+                    tooltip: 'Save or share Awrad',
+                    icon: Icon(Icons.ios_share_rounded, color: colors.emerald),
+                    onPressed: () => showExportBackupSheet(context),
+                  ),
+                  const SizedBox(width: 4),
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(

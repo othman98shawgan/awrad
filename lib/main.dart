@@ -5,8 +5,10 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'models/awrad_status.dart';
 import 'services/awrad_provider.dart';
+import 'services/backup_provider.dart';
 import 'services/date_utils.dart';
 import 'services/notification_service.dart';
+import 'services/prayer_provider.dart';
 import 'services/progress_provider.dart';
 import 'services/selected_date_provider.dart';
 import 'services/settings_provider.dart';
@@ -16,6 +18,7 @@ import 'ui/pages/progress_page.dart';
 import 'ui/pages/settings_page.dart';
 import 'ui/theme/app_theme.dart';
 import 'ui/widgets/awrad_task_sheet.dart';
+import 'ui/widgets/backup_restore_sheet.dart';
 import 'ui/widgets/date_switcher_bar.dart';
 import 'ui/widgets/prayer_sunnah_sheet.dart';
 
@@ -61,6 +64,10 @@ class _OradAppState extends ConsumerState<OradApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      ref.read(backupServiceProvider).flushAutoBackup();
+    }
     if (state == AppLifecycleState.resumed) {
       final nowDay = normalizeDate(DateTime.now());
       if (nowDay != _lastActiveDay) {
@@ -113,8 +120,17 @@ class _OradAppState extends ConsumerState<OradApp> with WidgetsBindingObserver {
     );
 
     ref.listen(settingsProvider, (_, __) => _syncReminder());
-    ref.listen(awradTasksProvider, (_, __) => _syncReminder());
+    ref.listen(awradTasksProvider, (_, __) {
+      _syncReminder();
+      ref.read(backupServiceProvider).scheduleAutoBackup();
+    });
     ref.listen(dailyAwradLogProvider(today), (_, __) => _syncReminder());
+    ref.listen(awradDataVersionProvider, (_, __) {
+      ref.read(backupServiceProvider).scheduleAutoBackup();
+    });
+    ref.listen(prayerDataVersionProvider, (_, __) {
+      ref.read(backupServiceProvider).scheduleAutoBackup();
+    });
 
     return MaterialApp(
       title: 'Awrad',
@@ -137,6 +153,20 @@ class AwradShell extends ConsumerStatefulWidget {
 
 class _AwradShellState extends ConsumerState<AwradShell> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkStartupRecovery());
+  }
+
+  Future<void> _checkStartupRecovery() async {
+    await ref.read(awradTasksProvider.notifier).load();
+    final backup = await ref.read(backupServiceProvider).checkStartupRecovery();
+    if (backup != null && mounted) {
+      await showStartupRecoveryDialog(context, ref, backup);
+    }
+  }
 
   static const _titles = [
     'Awrad',
