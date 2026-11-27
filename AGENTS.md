@@ -8,6 +8,13 @@ Always showcase and align on the complete scope, architecture, and edge cases of
 
 When preparing a Pull Request reminder, always format the PR Description inside a fenced markdown code block (```markdown ... ```) so it can be easily copied with one click into GitHub.
 
+## App Identity (Debug vs. Release)
+- Always separate **debug** builds from **release/profile** builds so local testing never overwrites or affects the installed store/production app:
+  - **Debug:** Prefix the app display name with `[Dev] ` (e.g., `[Dev] Awrad`) and use a separate debug application/bundle ID (`com.example.<app>`).
+  - **Release / Profile:** Use the production app name and store bundle/application ID (`com.othmanshawgan.<app>`).
+- On Android, preserve Flutter's `applicationName` placeholder by using `manifestPlaceholders += [...]` (never `=`) and overriding `debug` `applicationId` via `androidComponents`.
+- On iOS, parameterize `CFBundleDisplayName` in `Info.plist` (`$(APP_DISPLAY_NAME)`) and set `APP_DISPLAY_NAME` + `PRODUCT_BUNDLE_IDENTIFIER` per Xcode build configuration (`Debug` vs `Release`/`Profile`).
+
 ## Terminal & Background Commands (Windows)
 - On Windows, Flutter/Dart CLI tools (`flutter analyze`, `flutter test`, `flutter gen-l10n`, etc.) hang silently with empty background logs when run inside the restricted terminal sandbox (`BypassSandbox: false`).
 - Always run those background/CLI verification commands as **standalone single commands** (do not chain multiple commands with `;` or `&&`) using **`BypassSandbox: true`** so output streams live and the command completes cleanly.
