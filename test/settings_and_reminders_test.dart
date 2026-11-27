@@ -73,7 +73,7 @@ void main() {
     // Keep Screen Awake is hidden until Developer Mode is unlocked (7 taps on version)
     expect(find.text('Keep Screen Awake'), findsNothing);
 
-    final versionFinder = find.text('Awrad v1.0.0');
+    final versionFinder = find.textContaining('Awrad v');
     await tester.scrollUntilVisible(
       versionFinder,
       200,
