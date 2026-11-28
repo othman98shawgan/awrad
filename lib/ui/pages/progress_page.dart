@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/awrad_status.dart';
+import '../../models/awrad_task.dart';
+import '../../services/awrad_provider.dart';
 import '../../services/date_utils.dart';
 import '../../services/progress_provider.dart';
 import '../../services/selected_date_provider.dart';
@@ -137,6 +140,21 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
     final (start, end) = _currentRange(anchorDate, isHijri);
     final label = _periodLabel(start, end, isHijri);
 
+    final activeTasks = ref
+        .watch(awradTasksProvider)
+        .where((t) => !t.isArchived)
+        .toList();
+    final selectedWirdId = ref.watch(selectedProgressWirdIdProvider);
+    AwradTask? selectedTask;
+    if (selectedWirdId != null) {
+      for (final t in activeTasks) {
+        if (t.id == selectedWirdId) {
+          selectedTask = t;
+          break;
+        }
+      }
+    }
+
     final rangeQuery = ProgressRangeQuery(start, end);
     final rangeAsync = ref.watch(progressRangeProvider(rangeQuery));
     final days = rangeAsync.valueOrNull ??
@@ -194,6 +212,33 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
     final masjidPct = totalFardPossible == 0
         ? 0
         : ((totalMasjid / totalFardPossible) * 100).round();
+
+    // Single-Wird progress data when a specific Wird filter is active.
+    List<WirdDayProgress> wirdDays = const [];
+    List<WirdDayProgress> wirdStreakDays = const [];
+    if (selectedTask != null) {
+      final wirdRangeAsync = ref.watch(
+        wirdProgressRangeProvider(WirdRangeQuery(selectedTask.id, start, end)),
+      );
+      wirdDays = wirdRangeAsync.valueOrNull ??
+          datesInRange(start, end)
+              .map(
+                (d) => WirdDayProgress(
+                  date: d,
+                  isApplicable: selectedTask!.appliesTo(d),
+                  status: AwradStatus.notDone,
+                ),
+              )
+              .toList();
+      final wirdStreakStart =
+          DateTime(today.year, today.month, today.day - 120);
+      final wirdStreakAsync = ref.watch(
+        wirdProgressRangeProvider(
+          WirdRangeQuery(selectedTask.id, wirdStreakStart, today),
+        ),
+      );
+      wirdStreakDays = wirdStreakAsync.valueOrNull ?? wirdDays;
+    }
 
     return ListView(
       physics: const ClampingScrollPhysics(),
@@ -270,85 +315,200 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
             ],
           ),
         ),
+        if (activeTasks.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _WirdFilterBar(
+            tasks: activeTasks,
+            selectedTaskId: selectedTask?.id,
+            onSelect: (id) {
+              ref.read(selectedProgressWirdIdProvider.notifier).state = id;
+            },
+          ),
+        ],
         const SizedBox(height: 12),
-        ConsistencyHeatmap(
-          days: days,
-          isMonthly: _period == _ProgressPeriod.monthly,
-          selectedDate: _selectedDay,
-          onSelectDate: (d) => setState(() => _selectedDay = d),
-          onViewDay: (d) {
-            ref.read(selectedDateProvider.notifier).selectDate(d);
-            widget.onJumpToAwrad?.call();
-          },
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _ProgressStatCard(
-                label: 'Streak',
-                value: '${streak}d',
-                icon: Icons.local_fire_department_rounded,
-                iconColor: colors.amber,
+        if (selectedTask == null) ...[
+          ConsistencyHeatmap(
+            days: days,
+            isMonthly: _period == _ProgressPeriod.monthly,
+            selectedDate: _selectedDay,
+            onSelectDate: (d) => setState(() => _selectedDay = d),
+            onViewDay: (d) {
+              ref.read(selectedDateProvider.notifier).selectDate(d);
+              widget.onJumpToAwrad?.call();
+            },
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _ProgressStatCard(
+                  label: 'Streak',
+                  value: '${streak}d',
+                  icon: Icons.local_fire_department_rounded,
+                  iconColor: colors.amber,
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _ProgressStatCard(
-                label: 'Awrad',
-                value: '$awradPct%',
-                icon: Icons.trending_up_rounded,
-                iconColor: colors.emerald,
+              const SizedBox(width: 8),
+              Expanded(
+                child: _ProgressStatCard(
+                  label: 'Awrad',
+                  value: '$awradPct%',
+                  icon: Icons.trending_up_rounded,
+                  iconColor: colors.emerald,
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _ProgressStatCard(
-                label: 'In Masjid',
-                value: '$masjidPct%',
-                icon: Icons.mosque_outlined,
-                iconColor: colors.emerald,
+              const SizedBox(width: 8),
+              Expanded(
+                child: _ProgressStatCard(
+                  label: 'In Masjid',
+                  value: '$masjidPct%',
+                  icon: Icons.mosque_outlined,
+                  iconColor: colors.emerald,
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _StreakMilestonesCard(
-          currentStreak: streak,
-          bestStreak: bestStreak,
-          prayerStreak: prayerStreak,
-        ),
-        const SizedBox(height: 14),
-        _ReportActionCard(
-          title: 'Awrad Report',
-          subtitle: 'Elapsed days in $label (${elapsedDays.length}d)',
-          icon: Icons.checklist_rounded,
-          onPressed: elapsedDays.isEmpty
-              ? null
-              : () => showAwradReportSheet(
-                    context,
-                    periodLabel: label,
-                    elapsedDays: elapsedDays,
-                    taskSummaries: taskSummaries,
-                    streakDays: streak,
-                  ),
-        ),
-        const SizedBox(height: 10),
-        _ReportActionCard(
-          title: 'Prayers Report',
-          subtitle: 'Elapsed days in $label (${elapsedDays.length}d)',
-          icon: Icons.mosque_outlined,
-          onPressed: elapsedDays.isEmpty
-              ? null
-              : () => showPrayersReportSheet(
-                    context,
-                    periodLabel: label,
-                    elapsedDays: elapsedDays,
-                    prayerSummaries: prayerSummaries,
-                  ),
-        ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _StreakMilestonesCard(
+            currentStreak: streak,
+            bestStreak: bestStreak,
+            prayerStreak: prayerStreak,
+          ),
+          const SizedBox(height: 14),
+          _ReportActionCard(
+            title: 'Awrad Report',
+            subtitle: 'Elapsed days in $label (${elapsedDays.length}d)',
+            icon: Icons.checklist_rounded,
+            onPressed: elapsedDays.isEmpty
+                ? null
+                : () => showAwradReportSheet(
+                      context,
+                      periodLabel: label,
+                      elapsedDays: elapsedDays,
+                      taskSummaries: taskSummaries,
+                      streakDays: streak,
+                    ),
+          ),
+          const SizedBox(height: 10),
+          _ReportActionCard(
+            title: 'Prayers Report',
+            subtitle: 'Elapsed days in $label (${elapsedDays.length}d)',
+            icon: Icons.mosque_outlined,
+            onPressed: elapsedDays.isEmpty
+                ? null
+                : () => showPrayersReportSheet(
+                      context,
+                      periodLabel: label,
+                      elapsedDays: elapsedDays,
+                      prayerSummaries: prayerSummaries,
+                    ),
+          ),
+        ] else
+          ..._buildSingleWirdSections(
+            context: context,
+            task: selectedTask,
+            wirdDays: wirdDays,
+            wirdStreakDays: wirdStreakDays,
+            today: today,
+            periodLabel: label,
+            colors: colors,
+          ),
       ],
     );
+  }
+
+  List<Widget> _buildSingleWirdSections({
+    required BuildContext context,
+    required AwradTask task,
+    required List<WirdDayProgress> wirdDays,
+    required List<WirdDayProgress> wirdStreakDays,
+    required DateTime today,
+    required String periodLabel,
+    required AwradColors colors,
+  }) {
+    final elapsedWirdDays =
+        wirdDays.where((d) => !d.date.isAfter(today)).toList();
+    final applicableElapsed =
+        elapsedWirdDays.where((d) => d.isApplicable).toList();
+    final doneCount =
+        applicableElapsed.where((d) => d.status == AwradStatus.done).length;
+    final halfCount =
+        applicableElapsed.where((d) => d.status == AwradStatus.halfDone).length;
+    final completionPct = applicableElapsed.isEmpty
+        ? 0
+        : (((doneCount + halfCount * 0.5) / applicableElapsed.length) * 100)
+            .round();
+
+    final wirdStreak = computeWirdStreak(wirdStreakDays, now: today);
+    final wirdBestStreak = computeBestWirdStreak(wirdStreakDays);
+    final streakUnit = task.repeatWeekdays.isEmpty ? 'd' : '×';
+
+    return [
+      WirdConsistencyHeatmap(
+        task: task,
+        days: wirdDays,
+        isMonthly: _period == _ProgressPeriod.monthly,
+        selectedDate: _selectedDay,
+        onSelectDate: (d) => setState(() => _selectedDay = d),
+        onViewDay: (d) {
+          ref.read(selectedDateProvider.notifier).selectDate(d);
+          widget.onJumpToAwrad?.call();
+        },
+      ),
+      const SizedBox(height: 12),
+      Row(
+        children: [
+          Expanded(
+            child: _ProgressStatCard(
+              label: 'Streak',
+              value: '$wirdStreak$streakUnit',
+              icon: Icons.local_fire_department_rounded,
+              iconColor: colors.amber,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _ProgressStatCard(
+              label: 'Completion',
+              value: '$completionPct%',
+              icon: Icons.trending_up_rounded,
+              iconColor: colors.emerald,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _ProgressStatCard(
+              label: 'Done',
+              value: '$doneCount/${applicableElapsed.length}',
+              icon: Icons.check_circle_outline_rounded,
+              iconColor: colors.emerald,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      _StreakMilestonesCard(
+        currentStreak: wirdStreak,
+        bestStreak: wirdBestStreak,
+        unit: streakUnit,
+      ),
+      const SizedBox(height: 14),
+      _ReportActionCard(
+        title: '${task.title} Report',
+        subtitle:
+            'Scheduled days in $periodLabel (${applicableElapsed.length}d)',
+        icon: Icons.checklist_rounded,
+        onPressed: applicableElapsed.isEmpty
+            ? null
+            : () => showWirdReportSheet(
+                  context,
+                  task: task,
+                  periodLabel: periodLabel,
+                  elapsedDays: elapsedWirdDays,
+                  streakDays: wirdStreak,
+                ),
+      ),
+    ];
   }
 }
 
@@ -459,15 +619,105 @@ class _ProgressStatCard extends StatelessWidget {
   }
 }
 
+class _WirdFilterBar extends StatelessWidget {
+  final List<AwradTask> tasks;
+  final String? selectedTaskId;
+  final ValueChanged<String?> onSelect;
+
+  const _WirdFilterBar({
+    required this.tasks,
+    required this.selectedTaskId,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 36,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: [
+            _WirdFilterChip(
+              label: 'All',
+              selected: selectedTaskId == null,
+              onTap: () => onSelect(null),
+            ),
+            for (final task in tasks) ...[
+              const SizedBox(width: 8),
+              _WirdFilterChip(
+                label: task.title,
+                selected: selectedTaskId == task.id,
+                onTap: () => onSelect(task.id),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WirdFilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _WirdFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.awradColors;
+    final theme = Theme.of(context);
+
+    return Material(
+      color: selected ? colors.emerald : theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? colors.emerald : colors.cardBorder,
+            ),
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+              color: selected
+                  ? theme.colorScheme.onPrimary
+                  : theme.colorScheme.onSurface,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _StreakMilestonesCard extends StatelessWidget {
   final int currentStreak;
   final int bestStreak;
-  final int prayerStreak;
+  final int? prayerStreak;
+  final String unit;
 
   const _StreakMilestonesCard({
     required this.currentStreak,
     required this.bestStreak,
-    required this.prayerStreak,
+    this.prayerStreak,
+    this.unit = 'd',
   });
 
   static const _milestones = [3, 7, 14, 30, 40];
@@ -477,6 +727,9 @@ class _StreakMilestonesCard extends StatelessWidget {
     final colors = context.awradColors;
     final theme = Theme.of(context);
     final effectiveBest = bestStreak > currentStreak ? bestStreak : currentStreak;
+    final trailingText = prayerStreak != null
+        ? 'Best: $effectiveBest$unit · 5/5 Fard: ${prayerStreak}d'
+        : 'Best: $effectiveBest$unit';
 
     return Card(
       child: Padding(
@@ -500,7 +753,7 @@ class _StreakMilestonesCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  'Best: ${effectiveBest}d · 5/5 Fard: ${prayerStreak}d',
+                  trailingText,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: colors.mutedText,
                     fontWeight: FontWeight.w600,
@@ -542,7 +795,7 @@ class _StreakMilestonesCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 3),
                           Text(
-                            '${days}d',
+                            '$days$unit',
                             style: theme.textTheme.labelSmall?.copyWith(
                               fontWeight: FontWeight.w700,
                               color:

@@ -18,6 +18,9 @@ final progressIsMonthlyProvider = StateProvider<bool>((ref) => true);
 /// Whether the Progress tab's Monthly view uses the Hijri calendar.
 final progressHijriCalendarProvider = StateProvider<bool>((ref) => false);
 
+/// Optional task ID filter on the Progress tab (`null` = All Awrad).
+final selectedProgressWirdIdProvider = StateProvider<String?>((ref) => null);
+
 /// Computes the current consecutive-day streak ending at [today] (or yesterday
 /// if [today] has no progress yet) where `awradScore > 0`.
 int computeAwradStreak(
@@ -343,4 +346,122 @@ final prayerBreakdownProvider = FutureProvider.autoDispose
       totalRakahs: totalRakahs,
     );
   });
+});
+
+/// Daily progress record for a single Awrad task.
+class WirdDayProgress {
+  final DateTime date;
+  final bool isApplicable;
+  final AwradStatus status;
+  final String? note;
+
+  const WirdDayProgress({
+    required this.date,
+    required this.isApplicable,
+    required this.status,
+    this.note,
+  });
+
+  double get score => isApplicable ? status.score : 0.0;
+}
+
+/// Parameter object for querying a single Wird's progress over an inclusive range.
+class WirdRangeQuery {
+  final String taskId;
+  final DateTime start;
+  final DateTime end;
+
+  WirdRangeQuery(this.taskId, DateTime start, DateTime end)
+      : start = normalizeDate(start),
+        end = normalizeDate(end);
+
+  @override
+  bool operator ==(Object other) =>
+      other is WirdRangeQuery &&
+      other.taskId == taskId &&
+      other.start == start &&
+      other.end == end;
+
+  @override
+  int get hashCode => Object.hash(taskId, start, end);
+}
+
+/// Computes the current streak of consecutive *applicable* days for a single
+/// Wird where `status != AwradStatus.notDone`. Non-scheduled days are skipped,
+/// and if [today] is applicable but not yet done, the streak checks the
+/// previous scheduled day.
+int computeWirdStreak(
+  List<WirdDayProgress> days, {
+  DateTime? now,
+}) {
+  if (days.isEmpty) return 0;
+  final today = normalizeDate(now ?? DateTime.now());
+  final applicable = days
+      .where((d) => d.isApplicable && !d.date.isAfter(today))
+      .toList()
+    ..sort((a, b) => a.date.compareTo(b.date));
+  if (applicable.isEmpty) return 0;
+
+  var i = applicable.length - 1;
+  if (applicable[i].date == today &&
+      applicable[i].status == AwradStatus.notDone) {
+    i--;
+  }
+
+  var streak = 0;
+  while (i >= 0 && applicable[i].status != AwradStatus.notDone) {
+    streak++;
+    i--;
+  }
+  return streak;
+}
+
+/// Computes the longest streak of consecutive *applicable* days for a single
+/// Wird where `status != AwradStatus.notDone`.
+int computeBestWirdStreak(List<WirdDayProgress> days) {
+  if (days.isEmpty) return 0;
+  final applicable = days.where((d) => d.isApplicable).toList()
+    ..sort((a, b) => a.date.compareTo(b.date));
+
+  var best = 0;
+  var current = 0;
+  for (final day in applicable) {
+    if (day.status != AwradStatus.notDone) {
+      current++;
+      if (current > best) best = current;
+    } else {
+      current = 0;
+    }
+  }
+  return best;
+}
+
+/// Loads daily progress for a single Awrad task across [WirdRangeQuery].
+final wirdProgressRangeProvider = FutureProvider.autoDispose
+    .family<List<WirdDayProgress>, WirdRangeQuery>((ref, query) async {
+  ref.watch(awradDataVersionProvider);
+  final awradRepo = ref.watch(awradRepositoryProvider);
+  final tasks = ref.watch(awradTasksProvider);
+
+  final effectiveTasks = tasks.isNotEmpty ? tasks : await awradRepo.loadTasks();
+  AwradTask? task;
+  for (final t in effectiveTasks) {
+    if (t.id == query.taskId) {
+      task = t;
+      break;
+    }
+  }
+  if (task == null) return const [];
+
+  final awradLogs = await awradRepo.loadLogsInRange(query.start, query.end);
+  return datesInRange(query.start, query.end).map((date) {
+    final key = formatDateKey(date);
+    final log = awradLogs[key];
+    return WirdDayProgress(
+      date: date,
+      isApplicable: task!.appliesTo(date),
+      status: log?.statusFor(task.id) ?? AwradStatus.notDone,
+      note: log?.noteFor(task.id),
+    );
+  }).toList();
 });

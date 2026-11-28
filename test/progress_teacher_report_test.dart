@@ -1,4 +1,6 @@
 import 'package:awrad/main.dart';
+import 'package:awrad/models/awrad_status.dart';
+import 'package:awrad/models/awrad_task.dart';
 import 'package:awrad/services/date_utils.dart';
 import 'package:awrad/services/progress_provider.dart';
 import 'package:awrad/ui/widgets/teacher_report_sheet.dart';
@@ -160,10 +162,15 @@ void main() {
     await tester.pumpAndSettle();
 
     // Scroll to Reports cards
+    final verticalScrollable = find
+        .byWidgetPredicate(
+          (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+        )
+        .last;
     await tester.scrollUntilVisible(
       find.text('Prayers Report'),
       200,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: verticalScrollable,
     );
     await tester.ensureVisible(find.text('Prayers Report'));
     await tester.pumpAndSettle();
@@ -192,7 +199,7 @@ void main() {
     await tester.tap(find.text('Report').first);
     await tester.pumpAndSettle();
     expect(find.text('All Awrad'), findsOneWidget);
-    expect(find.text('Quran'), findsOneWidget);
+    expect(find.text('Quran'), findsAtLeastNWidgets(1));
 
     await tester.tap(find.text('Copy Awrad Report'));
     await tester.pump();
@@ -224,5 +231,193 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Daily Progress'), findsOneWidget);
+  });
+
+  test('computeWirdStreak and computeBestWirdStreak skip non-applicable days',
+      () {
+    // Daily task with grace period on today and halfDone keeping streak alive.
+    final today = DateTime(2026, 11, 28);
+    final dailyDays = [
+      WirdDayProgress(
+        date: DateTime(2026, 11, 24),
+        isApplicable: true,
+        status: AwradStatus.notDone,
+      ),
+      WirdDayProgress(
+        date: DateTime(2026, 11, 25),
+        isApplicable: true,
+        status: AwradStatus.done,
+      ),
+      WirdDayProgress(
+        date: DateTime(2026, 11, 26),
+        isApplicable: true,
+        status: AwradStatus.halfDone,
+      ),
+      WirdDayProgress(
+        date: DateTime(2026, 11, 27),
+        isApplicable: true,
+        status: AwradStatus.done,
+      ),
+      WirdDayProgress(
+        date: today,
+        isApplicable: true,
+        status: AwradStatus.notDone,
+      ),
+    ];
+    expect(computeWirdStreak(dailyDays, now: today), 3);
+    expect(computeBestWirdStreak(dailyDays), 3);
+
+    // Friday-only task: completing 3 consecutive Fridays = streak 3 despite off-days.
+    final fridayTaskDays = <WirdDayProgress>[];
+    for (final date in datesInRange(DateTime(2026, 11, 1), today)) {
+      final isFri = date.weekday == DateTime.friday;
+      // Nov 6 (missed), Nov 13 (done), Nov 20 (done), Nov 27 (done)
+      final status = isFri && date.day >= 13
+          ? AwradStatus.done
+          : AwradStatus.notDone;
+      fridayTaskDays.add(
+        WirdDayProgress(
+          date: date,
+          isApplicable: isFri,
+          status: status,
+        ),
+      );
+    }
+    expect(computeWirdStreak(fridayTaskDays, now: today), 3);
+    expect(computeBestWirdStreak(fridayTaskDays), 3);
+  });
+
+  test('formatWirdReportText formats completion stats and daily notes', () {
+    final now = DateTime(2026, 11, 28);
+    final task = AwradTask(
+      id: 'q1',
+      title: 'Read Quran',
+      createdAt: now,
+      updatedAt: now,
+    );
+    final days = [
+      WirdDayProgress(
+        date: DateTime(2026, 11, 26),
+        isApplicable: true,
+        status: AwradStatus.done,
+        note: 'Juz 2 complete',
+      ),
+      WirdDayProgress(
+        date: DateTime(2026, 11, 27),
+        isApplicable: true,
+        status: AwradStatus.halfDone,
+      ),
+      WirdDayProgress(
+        date: DateTime(2026, 11, 28),
+        isApplicable: true,
+        status: AwradStatus.notDone,
+      ),
+    ];
+
+    final text = formatWirdReportText(
+      task: task,
+      periodLabel: 'Nov 26 – Nov 28',
+      elapsedDays: days,
+      streakDays: 2,
+    );
+    expect(text, contains('Wird Report: Read Quran — Nov 26 – Nov 28'));
+    expect(text, contains('Scheduled days: 3 | Streak: 2 days'));
+    expect(text, contains('Completion: 50% (1 done, 1 half, 1 missed)'));
+    expect(text, contains('Notes:'));
+    expect(text, contains('Juz 2 complete'));
+  });
+
+  testWidgets(
+      'Progress tab filters by a single Wird, shows dedicated stats, and opens Wird Report',
+      (tester) async {
+    await tester.pumpWidget(const ProviderScope(child: OradApp()));
+    await tester.pumpAndSettle();
+
+    // Import Daily Essentials so we have active Awrad to filter.
+    await tester.tap(find.text('Tap here to choose from templates'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Daily Essentials'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Add'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add'));
+    await tester.pumpAndSettle();
+
+    // Navigate to Progress tab
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Progress'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Filter bar is visible with 'All' and 'Quran'
+    expect(find.text('All'), findsOneWidget);
+    expect(find.text('Quran'), findsOneWidget);
+
+    // Select 'Quran' filter
+    await tester.tap(find.text('Quran'));
+    await tester.pumpAndSettle();
+
+    // Single-Wird legend appears; overall 'In Masjid' & 'Prayers Report' hide
+    expect(find.text('Missed'), findsOneWidget);
+    expect(find.text('Half'), findsOneWidget);
+    expect(find.text('Done'), findsAtLeastNWidgets(1));
+    expect(find.text('In Masjid'), findsNothing);
+    expect(find.text('Prayers Report'), findsNothing);
+
+    // Scroll to single-Wird stats and report card
+    final verticalScrollable = find
+        .byWidgetPredicate(
+          (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+        )
+        .last;
+    await tester.scrollUntilVisible(
+      find.text('Quran Report'),
+      200,
+      scrollable: verticalScrollable,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Completion'), findsOneWidget);
+    expect(find.text('Quran Report'), findsOneWidget);
+
+    String? copiedText;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copiedText = (call.arguments as Map)['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      );
+    });
+
+    await tester.tap(find.text('Report'));
+    await tester.pumpAndSettle();
+    expect(find.text('Copy Wird Report'), findsOneWidget);
+
+    await tester.tap(find.text('Copy Wird Report'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(copiedText, contains('Wird Report: Quran —'));
+
+    // Switch back to 'All' and verify overall view returns
+    await tester.scrollUntilVisible(
+      find.text('All'),
+      -200,
+      scrollable: verticalScrollable,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('All'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('In Masjid'), findsOneWidget);
   });
 }

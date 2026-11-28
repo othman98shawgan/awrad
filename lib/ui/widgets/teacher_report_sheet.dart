@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../models/awrad_status.dart';
+import '../../models/awrad_task.dart';
+import '../../services/date_utils.dart';
 import '../../services/progress_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -80,6 +83,270 @@ String formatPrayersReportText({
   }
 
   return lines.join('\n');
+}
+
+/// Builds a clean plain-text summary for a single Wird over elapsed days in the selected period.
+String formatWirdReportText({
+  required AwradTask task,
+  required String periodLabel,
+  required List<WirdDayProgress> elapsedDays,
+  required int streakDays,
+}) {
+  final applicable = elapsedDays.where((d) => d.isApplicable).toList();
+  final total = applicable.length;
+  final done = applicable.where((d) => d.status == AwradStatus.done).length;
+  final half = applicable.where((d) => d.status == AwradStatus.halfDone).length;
+  final missed = total - done - half;
+  final pct = total == 0 ? 0 : (((done + half * 0.5) / total) * 100).round();
+
+  final streakText = task.repeatWeekdays.isEmpty
+      ? '$streakDays ${streakDays == 1 ? 'day' : 'days'}'
+      : '$streakDays in a row';
+
+  final detail = half > 0
+      ? '$done done, $half half, $missed missed'
+      : '$done done, $missed missed';
+
+  final lines = <String>[
+    'Wird Report: ${task.title} — $periodLabel',
+    'Scheduled days: $total | Streak: $streakText',
+    '• Completion: $pct% ($detail)',
+  ];
+
+  final notedDays = elapsedDays
+      .where((d) => d.note != null && d.note!.trim().isNotEmpty)
+      .toList();
+  if (notedDays.isNotEmpty) {
+    lines.add('');
+    lines.add('Notes:');
+    for (final d in notedDays) {
+      lines.add('• ${formatFriendlyDate(d.date)}: ${d.note!.trim()}');
+    }
+  }
+
+  return lines.join('\n');
+}
+
+/// Opens the single-Wird Report modal sheet.
+Future<void> showWirdReportSheet(
+  BuildContext context, {
+  required AwradTask task,
+  required String periodLabel,
+  required List<WirdDayProgress> elapsedDays,
+  required int streakDays,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    builder: (_) => _WirdReportSheet(
+      task: task,
+      periodLabel: periodLabel,
+      elapsedDays: elapsedDays,
+      streakDays: streakDays,
+    ),
+  );
+}
+
+class _WirdReportSheet extends StatelessWidget {
+  final AwradTask task;
+  final String periodLabel;
+  final List<WirdDayProgress> elapsedDays;
+  final int streakDays;
+
+  const _WirdReportSheet({
+    required this.task,
+    required this.periodLabel,
+    required this.elapsedDays,
+    required this.streakDays,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.awradColors;
+    final theme = Theme.of(context);
+    final reportText = formatWirdReportText(
+      task: task,
+      periodLabel: periodLabel,
+      elapsedDays: elapsedDays,
+      streakDays: streakDays,
+    );
+
+    final applicable = elapsedDays.where((d) => d.isApplicable).toList();
+    final total = applicable.length;
+    final done = applicable.where((d) => d.status == AwradStatus.done).length;
+    final half =
+        applicable.where((d) => d.status == AwradStatus.halfDone).length;
+    final missed = total - done - half;
+    final rate = total == 0 ? 0.0 : (done + half * 0.5) / total;
+
+    final streakLabel = task.repeatWeekdays.isEmpty
+        ? '$streakDays ${streakDays == 1 ? 'day' : 'days'} streak'
+        : '$streakDays in a row';
+
+    final notedDays = elapsedDays
+        .where((d) => d.note != null && d.note!.trim().isNotEmpty)
+        .toList();
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.72,
+      minChildSize: 0.45,
+      maxChildSize: 0.92,
+      builder: (context, scrollController) {
+        return Column(
+          children: [
+            Expanded(
+              child: ListView(
+                controller: scrollController,
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                children: [
+                  Text(
+                    '${task.title} Report',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$periodLabel · $total scheduled · $streakLabel',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colors.mutedText,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _ReportMetricBar(
+                    label: 'Completion Rate',
+                    detail: '${(rate * 100).round()}%',
+                    progress: rate,
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _WirdReportCountChip(
+                          label: 'Done',
+                          value: '$done',
+                          accent: colors.emerald,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _WirdReportCountChip(
+                          label: 'Half',
+                          value: '$half',
+                          accent: colors.emerald,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _WirdReportCountChip(
+                          label: 'Missed',
+                          value: '$missed',
+                          accent: colors.mutedText,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (notedDays.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    Text(
+                      'Daily Notes',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    for (final day in notedDays) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.emeraldSoft.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: colors.cardBorder),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              formatFriendlyDate(day.date),
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: colors.emerald,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              day.note!.trim(),
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ],
+                ],
+              ),
+            ),
+            _CopyReportFooter(
+              label: 'Copy Wird Report',
+              reportText: reportText,
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _WirdReportCountChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color accent;
+
+  const _WirdReportCountChip({
+    required this.label,
+    required this.value,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.awradColors;
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.cardBorder),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: accent,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colors.mutedText,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Opens the Awrad Report modal sheet.
