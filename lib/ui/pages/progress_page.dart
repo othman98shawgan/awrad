@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/awrad_status.dart';
@@ -434,6 +435,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
         applicableElapsed.where((d) => d.status == AwradStatus.done).length;
     final halfCount =
         applicableElapsed.where((d) => d.status == AwradStatus.halfDone).length;
+    final missedCount = applicableElapsed.length - doneCount - halfCount;
     final completionPct = applicableElapsed.isEmpty
         ? 0
         : (((doneCount + halfCount * 0.5) / applicableElapsed.length) * 100)
@@ -441,6 +443,8 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
 
     final wirdStreak = computeWirdStreak(wirdStreakDays, now: today);
     final wirdBestStreak = computeBestWirdStreak(wirdStreakDays);
+    final effectiveBest =
+        wirdBestStreak > wirdStreak ? wirdBestStreak : wirdStreak;
     final streakUnit = task.repeatWeekdays.isEmpty ? 'd' : '×';
 
     return [
@@ -478,10 +482,10 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
           const SizedBox(width: 8),
           Expanded(
             child: _ProgressStatCard(
-              label: 'Done',
-              value: '$doneCount/${applicableElapsed.length}',
-              icon: Icons.check_circle_outline_rounded,
-              iconColor: colors.emerald,
+              label: 'Best',
+              value: '$effectiveBest$streakUnit',
+              icon: Icons.emoji_events_outlined,
+              iconColor: colors.amber,
             ),
           ),
         ],
@@ -493,22 +497,215 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
         unit: streakUnit,
       ),
       const SizedBox(height: 14),
-      _ReportActionCard(
-        title: '${task.title} Report',
-        subtitle:
-            'Scheduled days in $periodLabel (${applicableElapsed.length}d)',
-        icon: Icons.checklist_rounded,
-        onPressed: applicableElapsed.isEmpty
-            ? null
-            : () => showWirdReportSheet(
-                  context,
-                  task: task,
-                  periodLabel: periodLabel,
-                  elapsedDays: elapsedWirdDays,
-                  streakDays: wirdStreak,
-                ),
+      _WirdInlineReportCard(
+        task: task,
+        periodLabel: periodLabel,
+        elapsedDays: elapsedWirdDays,
+        applicableCount: applicableElapsed.length,
+        doneCount: doneCount,
+        halfCount: halfCount,
+        missedCount: missedCount,
+        streakDays: wirdStreak,
       ),
     ];
+  }
+}
+
+class _WirdInlineReportCard extends StatelessWidget {
+  final AwradTask task;
+  final String periodLabel;
+  final List<WirdDayProgress> elapsedDays;
+  final int applicableCount;
+  final int doneCount;
+  final int halfCount;
+  final int missedCount;
+  final int streakDays;
+
+  const _WirdInlineReportCard({
+    required this.task,
+    required this.periodLabel,
+    required this.elapsedDays,
+    required this.applicableCount,
+    required this.doneCount,
+    required this.halfCount,
+    required this.missedCount,
+    required this.streakDays,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.awradColors;
+    final theme = Theme.of(context);
+    final notedDays = elapsedDays
+        .where((d) => d.note != null && d.note!.trim().isNotEmpty)
+        .toList();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${task.title} Report',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Scheduled days in $periodLabel (${applicableCount}d)',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colors.mutedText,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _WirdCountTile(
+                    label: 'Done',
+                    value: '$doneCount',
+                    accent: colors.emerald,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _WirdCountTile(
+                    label: 'Half',
+                    value: '$halfCount',
+                    accent: colors.emerald,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _WirdCountTile(
+                    label: 'Missed',
+                    value: '$missedCount',
+                    accent: colors.mutedText,
+                  ),
+                ),
+              ],
+            ),
+            if (notedDays.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Text(
+                'Daily Notes',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              for (final day in notedDays) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.emeraldSoft.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: colors.cardBorder),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        formatFriendlyDate(day.date),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: colors.emerald,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        day.note!.trim(),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+              ],
+            ],
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: applicableCount == 0
+                    ? null
+                    : () async {
+                        final reportText = formatWirdReportText(
+                          task: task,
+                          periodLabel: periodLabel,
+                          elapsedDays: elapsedDays,
+                          streakDays: streakDays,
+                        );
+                        await Clipboard.setData(
+                          ClipboardData(text: reportText),
+                        );
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Report copied to clipboard.'),
+                            ),
+                          );
+                        }
+                      },
+                icon: const Icon(Icons.copy_rounded, size: 17),
+                label: const Text('Copy Report'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WirdCountTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color accent;
+
+  const _WirdCountTile({
+    required this.label,
+    required this.value,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.awradColors;
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+      decoration: BoxDecoration(
+        color: colors.emeraldSoft.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.cardBorder),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: accent,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colors.mutedText,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

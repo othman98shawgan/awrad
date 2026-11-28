@@ -367,20 +367,21 @@ void main() {
     expect(find.text('In Masjid'), findsNothing);
     expect(find.text('Prayers Report'), findsNothing);
 
-    // Scroll to single-Wird stats and report card
+    // Scroll to single-Wird inline report card
     final verticalScrollable = find
         .byWidgetPredicate(
           (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
         )
         .last;
     await tester.scrollUntilVisible(
-      find.text('Quran Report'),
+      find.text('Copy Report'),
       200,
       scrollable: verticalScrollable,
     );
     await tester.pumpAndSettle();
     expect(find.text('Completion'), findsOneWidget);
     expect(find.text('Quran Report'), findsOneWidget);
+    expect(find.text('Copy Report'), findsOneWidget);
 
     String? copiedText;
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -399,11 +400,7 @@ void main() {
       );
     });
 
-    await tester.tap(find.text('Report'));
-    await tester.pumpAndSettle();
-    expect(find.text('Copy Wird Report'), findsOneWidget);
-
-    await tester.tap(find.text('Copy Wird Report'));
+    await tester.tap(find.text('Copy Report'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(copiedText, contains('Wird Report: Quran —'));
