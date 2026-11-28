@@ -491,12 +491,6 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
         ],
       ),
       const SizedBox(height: 12),
-      _StreakMilestonesCard(
-        currentStreak: wirdStreak,
-        bestStreak: wirdBestStreak,
-        unit: streakUnit,
-      ),
-      const SizedBox(height: 14),
       _WirdInlineReportCard(
         task: task,
         periodLabel: periodLabel,
@@ -506,6 +500,12 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
         halfCount: halfCount,
         missedCount: missedCount,
         streakDays: wirdStreak,
+      ),
+      const SizedBox(height: 12),
+      _StreakMilestonesCard(
+        currentStreak: wirdStreak,
+        bestStreak: wirdBestStreak,
+        unit: streakUnit,
       ),
     ];
   }
